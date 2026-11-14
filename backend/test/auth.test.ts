@@ -50,7 +50,9 @@ function memoryDatabase() {
     findByIdAndUpdate: async (id: string, update: any) => { const user = users.find(item => item._id === id); Object.assign(user, update.$set); return user; },
   };
   const Session = {
-    create: async (input: any) => { sessions.push(input); return input; },
+    find: (query: any) => ({ sort: () => ({ skip: (offset: number) => ({ select: async () => sessions.filter(item => item.userId === query.userId).slice().reverse().slice(offset) }) }) }),
+    deleteMany: async (query: any) => { for (let i = sessions.length - 1; i >= 0; i--) if (query._id?.$in.includes(sessions[i]._id) || query.userId === sessions[i].userId) sessions.splice(i, 1); },
+    create: async (input: any) => { input._id = randomBytes(12).toString('hex'); sessions.push(input); return input; },
     findOne: async (query: any) => sessions.find(session => session.userId === query.userId && session.tokenHash === query.tokenHash && session.expiresAt > query.expiresAt.$gt) || null,
     deleteOne: async (query: any) => { const index = sessions.findIndex(session => session.tokenHash === query.tokenHash); if (index >= 0) sessions.splice(index, 1); },
   };
@@ -129,5 +131,19 @@ test('rutas HTTP en memoria: registro, login, preferencias aisladas, validación
     await request('logout', 'POST', undefined, loginCookie);
     assert.equal(await (await request('me', 'GET', undefined, loginCookie)).json().catch(() => null), null);
     assert.equal((await request('preferences', 'PUT', { genres: ['rock'], artists: [] }, loginCookie)).status, 401);
+    let latestCookie = '';
+    for (let i = 0; i < 6; i++) {
+      const loginResponse = await request('login', 'POST', { email: credentials.email, password: credentials.password });
+      assert.equal(loginResponse.status, 201);
+      latestCookie = loginResponse.headers.get('set-cookie')!.split(';')[0];
+    }
+    assert.equal(database.sessions.filter(item => item.userId === registered.id).length, 5);
+    assert.equal(await (await request('me', 'GET', undefined, cookie)).json().catch(() => null), null);
+    assert.equal((await request('logout-all', 'POST', undefined, latestCookie)).status, 201);
+    assert.equal(database.sessions.filter(item => item.userId === registered.id).length, 0);
+    assert.equal((await request('logout-all', 'POST')).status, 401);
+    for (let i = 0; i < 5; i++) assert.equal((await request('login', 'POST', { email: 'missing@example.com', password: 'wrong-password' })).status, 401);
+    assert.equal((await request('login', 'POST', { email: 'missing@example.com', password: 'wrong-password' })).status, 429);
+
   } finally { await app.close(); }
 });

@@ -10,7 +10,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
   }
   async onModuleInit() {
     const uri = process.env.MONGODB_URI?.trim();
-    if (uri) this.connection = await mongoose.createConnection(uri, { serverSelectionTimeoutMS: 5000 }).asPromise();
+    if (uri) this.connection = await mongoose.createConnection(uri, { serverSelectionTimeoutMS: 5000, autoIndex: process.env.NODE_ENV !== 'production' }).asPromise();
   }
   get status() { return !this.connection ? 'not_configured' : this.connection.readyState === 1 ? 'connected' : 'disconnected'; }
   async onModuleDestroy() { await this.connection?.close(); }

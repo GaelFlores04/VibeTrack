@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import 'reflect-metadata';
 import 'dotenv/config';
 import { NestFactory } from '@nestjs/core';
@@ -10,7 +11,14 @@ async function bootstrap() {
   if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error('PORT inválido.');
   const origin = process.env.FRONTEND_ORIGIN || 'http://localhost:5173';
   new URL(origin);
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, { bodyParser: false });
+  app.getHttpAdapter().getInstance().disable('x-powered-by');
+  app.use((req: any, res: any, next: () => void) => {
+    req.requestId = randomUUID();
+    res.setHeader('X-Request-Id', req.requestId);
+    next();
+  });
+  app.use(require('express').json({ limit: '10kb' }));
   app.setGlobalPrefix('api');
   app.enableCors({ origin: process.env.NODE_ENV === 'production' ? origin : [origin, 'http://localhost:5173', 'http://127.0.0.1:5173'], credentials: true });
   app.use('/api/auth', (_req: any, res: any, next: () => void) => { res.setHeader('Cache-Control', 'no-store'); next(); });
