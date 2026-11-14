@@ -50,7 +50,7 @@ Producción necesita HTTPS y un proxy que mantenga frontend y API en el mismo si
 
 ## Cuentas y persistencia
 
-Colecciones `users` y `sessions`, relacionadas mediante `sessions.userId`. Email único normalizado, contraseñas con scrypt asíncrono y salt aleatorio por usuario. JWT HS256 con emisor, audiencia, expiración de siete días y firma verificados usando crypto de Node. El token se guarda en cookie; MongoDB almacena su hash para permitir revocación. Un índice TTL limpia sesiones vencidas; también se verifica su fecha en cada consulta.
+Colecciones `users` y `sessions`, relacionadas mediante `sessions.userId`. Email único normalizado, contraseñas con scrypt asíncrono versionado y salt aleatorio por usuario (N=32768, r=8, p=1). Se ejecutan hasta dos derivaciones a la vez y se admiten ocho en espera; al saturarse se responde 429. Los hashes anteriores se verifican con N=65536 y se migran tras un login correcto. JWT HS256 con emisor, audiencia, expiración de siete días y firma verificados usando crypto de Node. El token se guarda en cookie; MongoDB almacena su hash para permitir revocación. Un índice TTL limpia sesiones vencidas; también se verifica su fecha en cada consulta.
 
 Las preferencias se guardan en el usuario autenticado. Los DTOs rechazan campos adicionales y no aceptan un ID ajeno para modificar preferencias. Las consultas públicas funcionan sin cuenta. Sin MongoDB las operaciones de cuenta devuelven un error de servicio.
 
@@ -93,6 +93,7 @@ La personalización se calcula por sesión y sus claves incluyen cuenta, prefere
 | POST | /api/auth/login | `{ email, password }`; inicia sesión |
 | GET | /api/auth/me | Cuenta actual; sin sesión válida, respuesta vacía |
 | POST | /api/auth/logout | Revoca sesión y elimina cookie |
+| POST | /api/auth/logout-all | Requiere sesión; revoca todas las sesiones de la cuenta |
 | PUT | /api/auth/preferences | `{ genres: [], artists: [] }`; requiere sesión |
 | DELETE | /api/auth/preferences | Borra respuestas y vuelve a selección inicial |
 
@@ -125,3 +126,53 @@ Revisión de navegador a cargo del usuario, con servicios reales:
 Favoritos, calificaciones, historial, estadísticas, CRUD restante, permisos por rol, diseño retro y despliegue.
 
 Repositorio: https://github.com/GaelFlores04/VibeTrack.git
+
+## Si una credencial se expuso
+
+El dueño debe rotar la contraseña del usuario de Atlas, regenerar la clave de Last.fm
+ y generar un nuevo JWT_SECRET. Actualizar su entorno manualmente; nunca guardar valores reales en Git.
+
+```sh
+node -e "console.log(require('node:crypto').randomBytes(48).toString('hex'))"
+```
+
+Ejecutar `npm run check:secrets` antes de cada commit. El detector no abre archivos `.env`;
+no reemplaza la rotación de credenciales ni una revisión del historial de Git.
+
+## Auditoría local en curso
+
+La auditoría completa está **inconclusa**. Consultar `docs/AUDITORIA_RESUELTA.md` para el estado de cada fase.
+No se han publicado cambios ni efectuado push. El fallo real de recomendaciones con preferencias sigue abierto.
+
+- Máximo cinco sesiones conservadas por cuenta; `logout-all` cierra todas.
+- Login: después de cinco fallos por correo normalizado se bloquea temporalmente esa clave
+  durante 30 segundos; los bloqueos posteriores aumentan hasta 15 minutos. Estado acotado por proceso.
+- La política de contraseñas rechaza ejemplos triviales y el correo completo dentro de la contraseña.
+- El registro no admite roles; el esquema admite `user` y `admin`. RolesGuard distingue 401/403.
+  La interfaz y los endpoints administrativos de moods siguen pendientes de la fase F.
+- API: cuerpo JSON máximo 10 kb; JSON inválido con mensaje genérico; errores con `requestId`.
+  Las respuestas musicales se construyen con una lista de campos públicos; no exponen el estado del ranking.
+- Producción: `autoIndex=false`. Después de compilar, el dueño puede ejecutar
+  `node backend/scripts/sync-indexes.cjs` con MONGODB_URI configurada en su entorno.
+  Crea índices sin borrar índices ajenos. No se ha ejecutado contra Atlas.
+- Para promover una cuenta existente: `node backend/scripts/make-admin.cjs correo@example.com`.
+  Requiere MONGODB_URI en el entorno; no abre `.env` ni imprime credenciales. No se ha ejecutado.
+- JWT sigue siendo la implementación previa de siete días; la migración a @nestjs/jwt y renovación
+  corta está pendiente por bloqueo de instalación. No se considera resuelta la auditoría de autenticación.
+
+### Retomar la instalación bloqueada
+
+En una terminal local con acceso a npm, desde la raíz del proyecto:
+
+```powershell
+npm ci
+npm install -w backend helmet compression @nestjs/jwt @nestjs/swagger
+npm install -D -w backend @types/compression
+npm run build
+npm test
+```
+
+Estos comandos instalan dependencias; todavía falta conectar helmet, compresión, JWT y Swagger en el código.
+El fallo observado aquí fue ENOTFOUND para registry.npmjs.org. La instalación npm ci también encontró
+EPERM al crear enlaces de workspaces. Las dependencias anteriores se restauraron desde caché en una
+instalación auxiliar sin enlaces y se verificaron build y tests; eso no equivale a un npm ci normal exitoso.
