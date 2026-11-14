@@ -12,10 +12,12 @@ async function bootstrap() {
   new URL(origin);
   const app = await NestFactory.create(AppModule);
   app.setGlobalPrefix('api');
-  app.enableCors({ origin });
+  app.enableCors({ origin: process.env.NODE_ENV === 'production' ? origin : [origin, 'http://localhost:5173', 'http://127.0.0.1:5173'], credentials: true });
+  app.use('/api/auth', (_req: any, res: any, next: () => void) => { res.setHeader('Cache-Control', 'no-store'); next(); });
+  app.use('/api/music/recommendations', (_req: any, res: any, next: () => void) => { res.setHeader('Cache-Control', 'private, no-store'); next(); });
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }));
   app.useGlobalFilters(new ApiExceptionFilter());
   app.enableShutdownHooks();
   await app.listen(port, '127.0.0.1');
 }
-bootstrap().catch(() => { console.error('No se pudo iniciar la API. Revisa el entorno y la conexión a MongoDB.'); process.exit(1); });
+bootstrap().catch(() => { console.error('No se pudo iniciar la API. Revisa JWT_SECRET (mínimo 32 caracteres), el entorno y la conexión a MongoDB.'); process.exit(1); });

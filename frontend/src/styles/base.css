@@ -24,6 +24,25 @@ input { min-width: 0; flex: 1; }
 .moods a { display: block; padding: 1rem; border: 1px solid #a8b6c9; border-radius: .4rem; }
 .player { border-top: 1px solid #bdc7d4; }
 audio { width: 100%; }
+.account-form { max-width: 580px; display: grid; gap: 1rem; }
+.account-form label:not(.check-option) input { display: block; width: 100%; margin-top: .4rem; }
+.account-form fieldset { border: 1px solid #bdc7d4; border-radius: .3rem; }
+.check-option { display: inline-flex; align-items: center; gap: .4rem; margin-right: 1rem; }
+.check-option input { flex: none; }
+.actions { display: flex; flex-wrap: wrap; gap: .6rem; }
+.session-message { padding: 1rem; background: #fff1dc; }
+.autocomplete { position: relative; flex: 1; min-width: 0; }
+.autocomplete input { display: block; width: 100%; }
+.search { align-items: end; }
+.suggestions-panel { position: absolute; top: 100%; left: 0; right: 0; z-index: 5; background: white; border: 1px solid #a8b6c9; border-radius: .3rem; box-shadow: 0 5px 15px #18233320; max-height: 330px; overflow-y: auto; }
+.suggestions-panel p { padding: .6rem; margin: 0; }
+.suggestions-panel ul { list-style: none; margin: 0; padding: 0; }
+.suggestions-panel li { display: flex; flex-direction: column; padding: .6rem .8rem; cursor: pointer; overflow-wrap: anywhere; }
+.suggestions-panel li[aria-selected="true"], .suggestions-panel li:hover { background: #e7edf6; }
+.suggestions-panel span { font-size: .85rem; color: #42546b; }
+.artist-tags { display: flex; flex-wrap: wrap; gap: .5rem; list-style: none; padding: 0; }
+.artist-tags li { display: inline-flex; align-items: center; background: #e7edf6; border: 1px solid #a8b6c9; border-radius: 1.3rem; padding-left: .8rem; }
+.artist-tags button { border: 0; background: transparent; padding: .35rem .7rem; border-radius: 50%; }
 dt { font-weight: bold; margin-top: 1rem; }
 dd { margin-left: 0; }
 :focus-visible { outline: 3px solid #285bb8; outline-offset: 3px; }
