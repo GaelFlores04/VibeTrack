@@ -1,0 +1,44 @@
+{
+  "folders": [
+    { "name": "VibetrackPj", "path": "." }
+  ],
+  "settings": {
+    "files.encoding": "utf8",
+    "editor.tabSize": 2,
+    "files.exclude": { "**/node_modules": true },
+    "search.exclude": { "**/node_modules": true, "**/dist": true },
+    "terminal.integrated.cwd": "${workspaceFolder}"
+  },
+  "tasks": {
+    "version": "2.0.0",
+    "tasks": [
+      {
+        "label": "VibetrackPj: instalar dependencias",
+        "type": "shell",
+        "command": "npm install",
+        "problemMatcher": []
+      },
+      {
+        "label": "VibetrackPj: iniciar frontend y backend",
+        "type": "shell",
+        "command": "npm run dev",
+        "problemMatcher": [],
+        "presentation": { "reveal": "always", "panel": "dedicated" }
+      },
+      {
+        "label": "VibetrackPj: compilar",
+        "type": "shell",
+        "command": "npm run build",
+        "group": { "kind": "build", "isDefault": true },
+        "problemMatcher": []
+      },
+      {
+        "label": "VibetrackPj: pruebas",
+        "type": "shell",
+        "command": "npm test",
+        "group": "test",
+        "problemMatcher": []
+      }
+    ]
+  }
+}
