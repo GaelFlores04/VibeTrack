@@ -10,7 +10,7 @@ export default function ExplorePage() {
   const [query, setQuery] = useState(term);
   const resource = useResource(term ? `/music/search?q=${encodeURIComponent(term)}` : null);
   function submit(event) { event.preventDefault(); if (query.trim().length >= 2) setParams({ q: query.trim() }); }
-  return <><h1>Explorar música</h1><p>Busca una canción o artista y escucha los previews disponibles en iTunes.</p>
+  return <><h1>Explorar música</h1><p>Busca una canción o artista y escucha los previews disponibles en Deezer.</p>
     <form onSubmit={submit}><div className="search"><Autocomplete label="Canción o artista" value={query} onChange={setQuery} endpoint="/music/suggestions" placeholder="Empieza a escribir…" onSelect={item => { const next = (item.kind === 'artist' ? item.name : `${item.artist} ${item.name}`).slice(0, 100); setQuery(next); setParams({ q: next }); }} /><button disabled={query.trim().length < 2}>Buscar</button></div></form>
     <ResourceState resource={resource}>{resource.data && <><p role="status">{resource.data.length} resultados para «{term}».</p><TrackList tracks={resource.data} /></>}</ResourceState>
   </>;

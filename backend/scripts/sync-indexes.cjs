@@ -8,6 +8,8 @@ async function main() {
     await connection.model('User', userSchema).createIndexes();
     await connection.model('Session', sessionSchema).createIndexes();
     await connection.collection('music_cache').createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 });
+    await connection.collection('recommendation_history').createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 });
+    await connection.collection('taste_profiles').createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 });
     console.log('Índices creados.');
   } finally { await connection.close(); }
 }

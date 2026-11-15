@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useRef, useState } from 'react';
+import { mutate } from '../../shared/services/api';
 const PlayerContext = createContext(null);
 export const usePlayer = () => useContext(PlayerContext);
 export function PlayerProvider({ children }) {
@@ -9,6 +10,8 @@ export function PlayerProvider({ children }) {
   const [queueState, setQueueState] = useState({ index: -1, length: 0, next: null });
   const [track, setTrack] = useState(null);
   const [error, setError] = useState('');
+  // Una señal por canción y visita; sin sesión la API responde 401 y se ignora.
+  const learned = useRef(new Set());
   useEffect(() => () => { audio.current?.pause(); }, []);
   async function selectTrack(next, tracks = queue.current) {
     if (!next?.previewUrl) return;
@@ -20,8 +23,11 @@ export function PlayerProvider({ children }) {
     setTrack(next); setError('');
     audio.current.src = next.previewUrl;
     audio.current.load();
-    try { await audio.current.play(); }
-    catch { if (sequence.current === request) setError('No se pudo reproducir el preview. Reintenta desde los controles o abre la canción en iTunes.'); }
+    try {
+      await audio.current.play();
+      if (next.id?.startsWith('deezer:') && !learned.current.has(next.id)) { learned.current.add(next.id); mutate('/music/plays', 'POST', { id: next.id }).catch(() => {}); }
+    }
+    catch { if (sequence.current === request) setError('No se pudo reproducir el preview. Reintenta desde los controles o abre la canción en su página.'); }
   }
   function step(direction) {
     const next = queue.current[position.current + direction];
@@ -34,7 +40,7 @@ export function PlayerProvider({ children }) {
       <audio ref={audio} controls preload="none" onEnded={() => step(1)} onError={() => setError('El preview no está disponible.')} aria-label="Controles del preview" />
       <div className="actions"><button disabled={queueState.index <= 0} onClick={() => step(-1)}>Anterior</button><button disabled={queueState.index < 0 || queueState.index >= queueState.length - 1} onClick={() => step(1)}>Siguiente</button></div>
       {queueState.index >= 0 && <p>{queueState.index + 1} de {queueState.length} previews. {queueState.next ? `Sigue: ${queueState.next.title} — ${queueState.next.artist}` : 'Fin de la tanda.'}</p>}
-      {track && <p><a href={track.externalUrl} target="_blank" rel="noreferrer">Ver canción en iTunes</a> · Previews provided courtesy of iTunes.</p>}
+      {track && <p><a href={track.externalUrl} target="_blank" rel="noreferrer">Ver canción en {track.provider === 'itunes' ? 'iTunes' : 'Deezer'}</a> · {track.provider === 'itunes' ? 'Previews provided courtesy of iTunes.' : 'Previews de Deezer.'}</p>}
       {error && <p role="alert">{error}</p>}
     </section>
   </PlayerContext.Provider>;

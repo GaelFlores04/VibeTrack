@@ -23,7 +23,7 @@ export default function PreferencesPage() {
     try { await clearPreferences(); setSelected([]); setArtists([]); setArtistQuery(''); setMessage('Preferencias eliminadas. Volvemos a la selección de canciones conocidas.'); }
     catch (err) { setError(err.message); } finally { setBusy(false); }
   }
-  return <><h1>Tus preferencias musicales</h1><p>Cuestionario opcional. Tus gustos ordenan las canciones que encajen con el mood; no cambian su categoría.</p>
+  return <><h1>Tus preferencias musicales</h1><p>Cuestionario opcional. Tus gustos orientan las recomendaciones: verás más de tus artistas, pero también similares y descubrimientos que encajen con el mood.</p>
     <form className="account-form" onSubmit={save}>
       <fieldset disabled={busy}><legend>¿Qué géneros te gustan? Elige hasta seis.</legend>
         {Object.entries(genres).map(([value, label]) => <label className="check-option" key={value}><input type="checkbox" checked={selected.includes(value)} disabled={!selected.includes(value) && selected.length >= 6} onChange={event => setSelected(items => event.target.checked ? [...items, value] : items.filter(item => item !== value))} />{label}</label>)}

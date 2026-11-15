@@ -12,7 +12,7 @@ function MoodRecommendations({ mood, user }) {
   const resource = useRecommendations(mood);
   const personalized = resource.batch ? resource.batch.mode === 'personalized' : Boolean(user?.preferences);
   return <><h1>Canciones para tu mood: {mood}</h1>
-    <p>{personalized ? 'Tus artistas, artistas relacionados y géneros preferidos, dentro de este mood.' : 'Canciones conocidas para acompañar este mood.'} <Link to={user ? '/preferencias' : '/registro'}>{user ? 'Cambiar preferencias' : 'Personalizar con una cuenta'}</Link></p>
+    <p>{personalized ? 'Sobre todo tus artistas, más similares y tus géneros, y algún descubrimiento que encaje con este mood.' : 'Canciones conocidas para acompañar este mood.'} <Link to={user ? '/preferencias' : '/registro'}>{user ? 'Cambiar preferencias' : 'Personalizar con una cuenta'}</Link></p>
     {resource.loading && <p role="status">{resource.batch ? 'Actualizando la selección. Puedes seguir escuchando esta tanda.' : 'Preparando 7 recomendaciones…'}</p>}
     {resource.batch && <><p>{resource.batch.status === 'ready' ? `Tanda ${resource.batch.page} · 7 recomendaciones` : `${resource.batch.tracks.length} de 7 recomendaciones encontradas`} · {resource.batch.tracks.filter(track => track.previewUrl).length} con preview</p><TrackList tracks={resource.batch.tracks} /></>}
     {resource.batch?.previewsPending && <p role="status">Buscando previews; las recomendaciones ya están disponibles. <button disabled={resource.loading} onClick={resource.refreshAudio}>Actualizar audio</button></p>}

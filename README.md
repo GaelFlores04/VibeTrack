@@ -4,7 +4,7 @@ Aplicación para descubrir música según tu estado de ánimo. React + Vite, Nes
 
 ## Funciones disponibles
 
-- Búsqueda de canciones y artistas en iTunes, con portadas y previews cuando están disponibles.
+- Búsqueda de canciones y artistas en Deezer (iTunes como respaldo), con portadas y previews.
 - Seis moods con perfiles distintos, varias etiquetas de Last.fm y selección editorial inicial de canciones conocidas.
 - Registro, login, consulta de cuenta y logout con revocación de sesión.
 - Cuestionario opcional de géneros y artistas; búsqueda con sugerencias y selección como etiquetas removibles, conservando preferencias existentes.
@@ -56,28 +56,51 @@ Las preferencias se guardan en el usuario autenticado. Los DTOs rechazan campos 
 
 ## Recomendaciones y rendimiento
 
-Cada tanda completa contiene **7 recomendaciones**; el audio no bloquea su presentación. Se mantiene una reserva de candidatas por sesión de descubrimiento; se consultan más fuentes hasta reunir siete coincidencias de mood y preferencias. Las canciones ya entregadas no se repiten en esa sesión. Las tandas preparadas se reutilizan y las peticiones simultáneas de la misma página se agrupan.
+Cada tanda completa contiene **7 recomendaciones**; el audio no bloquea su presentación. Se mantiene una reserva de candidatas por sesión de descubrimiento; se consultan más fuentes hasta reunir siete coincidencias de mood y preferencias. Las tandas preparadas se reutilizan y las peticiones simultáneas de la misma página se agrupan.
 
-Si no se encuentran siete coincidencias de mood y preferencias, la respuesta indica `retry` o `exhausted`. La interfaz conserva la tanda completa anterior si existe; en la primera carga muestra las coincidencias disponibles y un mensaje específico. No se inventa disponibilidad, no se rellena con canciones ajenas a los gustos y no se sustituye una tanda de siete por otra de dos. La disponibilidad de siete canciones nuevas no puede garantizarse indefinidamente para cualquier combinación de artistas y mood. Una vez seleccionadas, los previews se buscan en segundo plano; el frontend consulta su progreso sin reemplazar la selección. Un fallo de iTunes deja las tarjetas y enlaces disponibles.
+### Proveedores
+
+| Proveedor | Uso | Clave |
+| --- | --- | --- |
+| **Last.fm** | Candidatas (tags del mood, géneros, top de artistas), artistas similares, género del artista, etiquetas de respaldo y autocompletado | `LASTFM_API_KEY` |
+| **Deezer** | Búsqueda, previews de 30 s, portada e ISRC de cada candidata | No (endpoints públicos) |
+| **ReccoBeats** | Rasgos de audio por ISRC (valence, energy, danceability, acousticness) para clasificar el mood | No; `RECCOBEATS_ENABLED=false` lo desactiva |
+| **iTunes Search** | Respaldo de búsqueda y previews si Deezer falla o no encuentra la canción | No |
+
+Las URLs de preview de Deezer van firmadas y caducan en ~15 minutos, así que las tarjetas apuntan a `/api/music/preview/:id`, que redirige a una URL recién emitida (caché de 5 minutos, sólo en memoria y sólo hacia `*.dzcdn.net`).
+
+### Cómo se decide el mood
+
+- Cada mood define rangos de audio: feliz (valence ≥ 0.6, energy ≥ 0.45, danceability ≥ 0.45), triste (valence ≤ 0.38, energy ≤ 0.5, danceability ≤ 0.68: lo tenso o bailable no es tristeza), cansado (energy ≤ 0.32), relajado, motivado y romántico.
+- **Tempo (BPM) como señal suave.** Se usa el tempo *percibido*: los detectores suelen dar el doble del pulso en canciones lentas (Fix You marca 138 y se siente a 69), así que con energía baja se divide entre dos. Rangos: feliz 100–170, triste 50–100, cansado 45–95, relajado 55–120, romántico 55–115, motivado 80–195. Fuera del rango la afinidad baja hasta un 40 %, pero el tempo nunca descarta una canción por sí solo. También suaviza el orden: se evitan saltos bruscos de pulso entre canciones consecutivas.
+- **Sin etiquetas de ánimo**, una canción entra si su audio encaja con claridad (así "Fix You" cuenta como triste aunque Last.fm no la etiquete).
+- **Con etiquetas**, se promedian etiqueta y audio: una canción etiquetada "happy" que suena triste se descarta.
+- Una etiqueta contraria explícita (p. ej. `sad` para feliz) sigue excluyendo. Sin rasgos de audio (ReccoBeats caído o sin datos) se usan sólo las etiquetas de Last.fm, como antes.
+- Al clasificar una candidata se obtiene su coincidencia en Deezer; esa misma coincidencia aporta el preview, sin una segunda búsqueda.
+
+### Personalización
 
 - **Invitados/sin cuestionario:** selección editorial conocida y listas del mood, ponderando afinidad y popularidad.
-- **Con preferencias:** sólo pasan temas de artistas elegidos, artistas relacionados por Last.fm o géneros seleccionados. Se elimina el relleno editorial genérico. La afinidad personal aporta 70 % del ranking, el mood 28 % y la popularidad 2 %.
-- Las etiquetas de origen específicas del mood aportan evidencia; un género o artista por sí solo no prueba el estado de ánimo. Para candidatas personales sin evidencia se comprueban `track.getInfo` y, si hace falta, `track.getTopTags`. Se descartan señales contrarias conocidas.
-- Se espacia a los artistas y se favorece continuidad de género e intensidad estimada. No hay análisis de BPM, tonalidad ni letras.
-- iTunes se consulta **por catálogo de artista**, hasta 200 canciones con sus metadatos por llamada. Se conserva la coincidencia de título/artista/versiones y se admiten diferencias de créditos de banda sonora. Hay un máximo de dos búsquedas exactas de respaldo por preparación.
-- Las canciones se muestran aunque su preview esté pendiente o no exista. Sólo se habilita reproducir cuando hay un URL devuelto por el proveedor; el reproductor conserva su manejo de errores de CDN.
+- **Con preferencias, que orientan pero no encierran.** Cada tanda de 7 se arma por cupos: **3 de tus artistas**, **2 cercanas** (artistas similares, tus géneros o el estilo de tus artistas) y **2 descubrimientos** fuera de tus gustos que encajen claramente con el mood (afinidad ≥ 0.8), con preferencia por géneros vecinos (rock → indie/folk/metal, hip-hop → R&B/electrónica…). Sin artistas elegidos: 5 de tus géneros y 2 descubrimientos. Si un grupo no alcanza, completan primero tus artistas y los cercanos; los descubrimientos llegan a 3 como máximo salvo que no haya nada más. Cada canción indica su motivo ("De uno de tus artistas", "Artista similar a…", "Para descubrir: folk, cerca de lo que escuchas").
+- Con géneros elegidos y audio disponible, la mitad de cada ronda de verificación revisa temas del propio género (una consulta a Deezer basta para saber si suenan al mood).
+- **Descubrimientos con criterio.** Salen de dos fuentes: las listas del mood y **artistas a dos pasos** de los tuyos (similares de tus similares; p. ej. The Strokes → Little Joy o CRX). Se puntúan por afinidad con tu gusto (35 %), encaje con el mood (30 %) y **popularidad intermedia** (25 %): se prefieren temas entre ~30 mil y ~800 mil oyentes en Last.fm, y un mega-éxito (más de ~2 M) apenas suma. Los temas de tus géneros también ponderan esa novedad a medias; los de tus artistas favoritos, no.
+- **Sorpresa ocasional.** En ~1 de cada 3 tandas uno de los descubrimientos es deliberadamente distinto a tu gusto, pero encaja de sobra con el mood (afinidad ≥ 0.85) y no es un mega-éxito.
+- **Perfil de gusto (`taste_profiles`).** Por cuenta, en MongoDB (memoria si no hay base), con TTL de 180 días. Combina las etiquetas de tus artistas, tus géneros y lo que aprende de las previews que escuchas (`POST /api/music/plays`): peso por artista, peso por etiqueta y el promedio de sonido (valence, energy, danceability, acousticness, tempo). Las señales antiguas pierden peso poco a poco. **Sólo guarda agregados**, nunca qué escuchaste ni cuándo.
+- El historial de canciones mostradas se guarda por cuenta y mood durante 7 días (`recommendation_history`, con TTL). Cambiar de gustos no reinicia el historial; si ya se mostró todo lo compatible, el ciclo vuelve a empezar.
 
-La caché compartida almacena exclusivamente metadatos públicos, en memoria y en la colección `music_cache` de MongoDB con índice TTL. Catálogos y etiquetas: seis horas; fuentes: una hora; búsquedas: diez minutos; sugerencias: treinta minutos. No se almacenan archivos de audio. Si la caché de MongoDB falla se usa la memoria y se sigue consultando al proveedor.
+Si no se encuentran siete coincidencias, la respuesta indica `retry` o `exhausted`. La interfaz conserva la tanda completa anterior si existe; en la primera carga muestra las coincidencias disponibles y un mensaje específico. No se rellena con canciones ajenas a los gustos ni se sustituye una tanda de siete por otra de dos. Algunas combinaciones (p. ej. un pianista clásico con el mood motivado) no tienen siete canciones reales.
 
-El límite de iTunes permanece en dieciocho consultas por minuto y proceso. El autocompletado usa Last.fm, por lo que escribir no consume esa cuota. La interfaz consulta desde la primera letra tras 220 ms sin teclear, cancela respuestas obsoletas y reutiliza sugerencias recientes.
+### Caché y límites
 
-La personalización se calcula por sesión y sus claves incluyen cuenta, preferencias, mood e identificador de descubrimiento. Cambiar de cuenta o de gustos reinicia la selección. El ranking de moods sigue siendo una aproximación basada en etiquetas sociales, pendiente de evaluación escuchando canciones reales.
+La caché compartida almacena exclusivamente metadatos públicos, en memoria y en la colección `music_cache` de MongoDB con índice TTL. Rasgos de audio: tres días; coincidencias de Deezer: un día; catálogos y etiquetas: seis horas; fuentes: una hora; búsquedas: diez minutos. No se almacenan archivos de audio.
+
+Deezer se limita a 40 consultas cada 5 s por proceso (su cuota pública es 50); ReccoBeats agrupa hasta 40 ISRC por llamada; iTunes conserva dieciocho consultas por minuto. Last.fm informa `totalPages` muy por debajo de lo real en los tags, por eso los tags se paginan hasta recibir una página corta (máximo 30); el top de un artista se recorre hasta 4 páginas.
 
 ### APIs evaluadas
 
-- **iTunes Search:** sigue documentada por Apple, con previews y aproximadamente veinte consultas/minuto. La solución implementada reduce llamadas usando catálogos y caché: https://performance-partners.apple.com/search-api
-- **Spotify:** el campo `preview_url` está obsoleto y admite null; no resuelve de forma fiable la cobertura de previews: https://developer.spotify.com/documentation/web-api/reference/get-track
-- **Deezer:** su equipo ha comunicado restricciones para nuevos accesos de particulares. No se añadió como dependencia sin un acceso oficial confirmado: https://en.deezercommunity.com/features-feedback-44/api-auth-impossible-80857
+- **Spotify:** desde 2024 las apps nuevas no tienen acceso a *audio-features*, *recommendations* ni previews; no sirve para este caso.
+- **Deezer:** restringió la creación de nuevas apps OAuth, pero los endpoints públicos de búsqueda y pistas que se usan aquí no requieren app ni clave.
+- **ReccoBeats:** servicio gratuito y pequeño; por eso es opcional y su caída sólo devuelve la clasificación a las etiquetas.
 
 ## API
 
@@ -86,6 +109,8 @@ La personalización se calcula por sesión y sus claves incluyen cuenta, prefere
 | GET | /api/health | Estado de proceso y conexión/configuración |
 | GET | /api/moods | Seis moods con descripción |
 | GET | /api/music/search?q=Daft%20Punk | Búsqueda pública |
+| GET | /api/music/preview/3106505 | Redirige a la URL vigente del preview de Deezer |
+| POST | /api/music/plays | `{ id: "deezer:3106505" }`; requiere sesión. Afina el perfil de gusto (sólo agregados) |
 | GET | /api/music/recommendations/feliz?session=UUID&page=1 | Tanda de 7; objeto con tracks, status, page, nextPage, mode y previewsPending |
 | GET | /api/music/artists?q=d | Sugerencias de artistas desde una letra |
 | GET | /api/music/suggestions?q=d | Sugerencias de canciones y artistas desde una letra |

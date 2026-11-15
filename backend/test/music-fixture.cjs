@@ -8,9 +8,23 @@ function createMusicFixture(options = {}) {
   const lastfm = item => ({ name: item.title, artist: { name: item.artist }, url: `https://www.last.fm/music/${encodeURIComponent(item.artist)}/_/${encodeURIComponent(item.title)}`, listeners: '100000' });
   const itunes = item => ({ kind: 'song', trackId: item.id, artistName: item.artist, trackName: item.title, trackViewUrl: `https://music.apple.com/track/${item.id}`, collectionName: 'Fixture album', primaryGenreName: 'Rock', artworkUrl100: 'https://example.test/cover.jpg', ...(options.missing?.includes(item.index) ? {} : { previewUrl: `https://example.test/${item.id}.m4a` }) });
   const json = value => new Response(JSON.stringify(value));
+  const isrc = item => `QZFIX${String(item.id).padStart(7, '0')}`;
+  const deezer = item => ({ id: item.id, type: 'track', readable: true, title: item.title, link: `https://www.deezer.com/track/${item.id}`, duration: 200, isrc: isrc(item), artist: { name: item.artist }, album: { title: 'Fixture album', cover_medium: 'https://example.test/cover.jpg' }, ...(options.missing?.includes(item.index) ? {} : { preview: `https://cdnt-preview.dzcdn.net/${item.id}.mp3` }) });
   async function fetcher(input) {
     const url = new URL(String(input));
     calls.push({ host: url.hostname, method: url.searchParams.get('method'), term: url.searchParams.get('term'), tag: url.searchParams.get('tag'), attribute: url.searchParams.get('attribute') });
+    if (url.hostname === 'api.deezer.com') {
+      if (failApple || options.deezerDown) return new Response('', { status: 503 });
+      const track = url.pathname.match(/^\/track\/(\d+)$/);
+      if (track) { const item = records.find(record => record.id === Number(track[1])); return json(item ? deezer(item) : { error: { code: 800 } }); }
+      const q = (url.searchParams.get('q') || '').toLowerCase();
+      return json({ data: records.filter(item => `${item.artist} ${item.title}`.toLowerCase().includes(q)).slice(0, Number(url.searchParams.get('limit') || 25)).map(deezer) });
+    }
+    if (url.hostname === 'api.reccobeats.com') {
+      const ids = (url.searchParams.get('ids') || '').split(',');
+      // Por defecto sin rasgos de audio: las pruebas de etiquetas siguen aisladas.
+      return json({ content: records.filter(item => ids.includes(isrc(item))).flatMap(item => { const features = options.audio?.(item); return features ? [{ isrc: isrc(item), acousticness: .2, danceability: .6, ...features }] : []; }) });
+    }
     if (url.hostname === 'itunes.apple.com') {
       if (failApple) return new Response('', { status: 503 });
       const term = url.searchParams.get('term').toLowerCase();
