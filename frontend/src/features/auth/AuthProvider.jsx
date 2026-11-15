@@ -12,10 +12,18 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     const controller = new AbortController();
     setLoading(true); setError('');
-    api('/auth/me', controller.signal).then(value => { if (!controller.signal.aborted) { setUser(value); setLoading(false); setVersion(v => v + 1); } })
+    api('/auth/refresh', controller.signal, { method: 'POST' }).then(value => { if (!controller.signal.aborted) { setUser(value); setLoading(false); setVersion(v => v + 1); } })
       .catch(err => { if (!controller.signal.aborted) { setLoading(false); setError(err.message); } });
     return () => controller.abort();
   }, [attempt]);
+  useEffect(() => {
+    if (!user) return;
+    let stopped = false;
+    const timer = setInterval(() => {
+      mutate('/auth/refresh', 'POST').then(value => { if (!stopped) setUser(value); }).catch(() => {});
+    }, 10 * 60 * 1000);
+    return () => { stopped = true; clearInterval(timer); };
+  }, [user?.id]);
   const accept = value => { setUser(value); setVersion(v => v + 1); setError(''); };
   async function authenticate(mode, values) { const value = await mutate(`/auth/${mode}`, 'POST', values); accept(value); return value; }
   async function logout() { await mutate('/auth/logout', 'POST'); accept(null); }

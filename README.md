@@ -191,7 +191,7 @@ En una terminal local con acceso a npm, desde la raíz del proyecto:
 
 ```powershell
 npm ci
-npm install -w backend helmet compression @nestjs/jwt @nestjs/swagger
+npm install -w backend helmet compression @nestjs/jwt
 npm install -D -w backend @types/compression
 npm run build
 npm test
@@ -201,3 +201,15 @@ Estos comandos instalan dependencias; todavía falta conectar helmet, compresió
 El fallo observado aquí fue ENOTFOUND para registry.npmjs.org. La instalación npm ci también encontró
 EPERM al crear enlaces de workspaces. Las dependencias anteriores se restauraron desde caché en una
 instalación auxiliar sin enlaces y se verificaron build y tests; eso no equivale a un npm ci normal exitoso.
+
+### Seguridad integrada después de instalar dependencias
+
+Helmet aplica CSP de API `default-src 'none'; frame-ancestors 'none'`, nosniff y HSTS solo en producción.
+Compression negocia compresión de JSON; el parser limita el cuerpo a 10 kb.
+JWT ahora usa @nestjs/jwt con HS256, issuer/audience fijos y duración de 60 minutos.
+`POST /api/auth/refresh` requiere X-VibeTrack y la cookie: comprueba firma, hash revocable y la fecha
+máxima de sesión en MongoDB. En los últimos 15 minutos rota el token de forma atómica, sin extender
+los siete días originales. El frontend renueva al entrar y cada diez minutos mientras hay sesión.
+Las cookies anteriores firmadas con duración de siete días requieren iniciar sesión de nuevo tras esta migración;
+un refresh con una cookie inválida, revocada o caducada la elimina del navegador.
+`@nestjs/swagger` se retiró: no se usaba y arrastraba `swagger-ui-dist` y la telemetría `@scarf/scarf`.

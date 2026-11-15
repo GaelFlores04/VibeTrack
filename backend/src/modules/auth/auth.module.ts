@@ -94,6 +94,24 @@ export class AuthService {
     const session = await this.sessions.findOne({ userId: payload.sub, tokenHash: tokenHash(token), expiresAt: { $gt: new Date() } });
     return session ? this.users.findById(payload.sub) : null;
   }
+  async refresh(req: any) {
+    const token = this.cookie(req);
+    if (!token || token.length > 4096) return null;
+    let payload;
+    try { payload = await this.jwt.verifyAsync(token, true); } catch { return null; }
+    if (!/^[a-f0-9]{24}$/.test(payload.sub)) return null;
+    const query = { userId: payload.sub, tokenHash: tokenHash(token), expiresAt: { $gt: new Date() } };
+    const session = await this.sessions.findOne(query);
+    if (!session) return null;
+    const user = await this.users.findById(payload.sub);
+    if (!user) return null;
+    // Mientras el token siga fresco, no rotarlo: dos pestañas no deben invalidarse entre sí.
+    if (payload.exp - Date.now() / 1000 > 15 * 60) return { user, token, expires: session.expiresAt };
+    const replacement = await this.jwt.signAsync({ sub: payload.sub, jti: randomBytes(24).toString('hex') });
+    const updated = await this.sessions.updateOne(query, { $set: { tokenHash: tokenHash(replacement) } });
+    if (!updated.matchedCount) return null;
+    return { user, token: replacement, expires: session.expiresAt };
+  }
   async logoutAll(user: any) { await this.sessions.deleteMany({ userId: user._id }); }
   async logout(req: any) {
     const token = this.cookie(req);
@@ -141,6 +159,17 @@ export class AuthController {
     return publicUser(user);
   }
   @Get('me') async me(@Req() req: any) { const user = await this.auth.current(req); return user ? publicUser(user) : null; }
+  @Post('refresh') @UseGuards(WriteGuard)
+  async refresh(@Req() req: any, @Res({ passthrough: true }) res: any) {
+    const result = await this.auth.refresh(req);
+    // Una cookie inválida, revocada o caducada se elimina para no reenviarla en cada petición.
+    if (!result) {
+      if (String(req.headers.cookie || '').includes(`${cookieName}=`)) res.clearCookie(cookieName, { ...cookieOptions(), maxAge: undefined });
+      return null;
+    }
+    res.cookie(cookieName, result.token, { ...cookieOptions(), maxAge: Math.max(0, result.expires.getTime() - Date.now()) });
+    return publicUser(result.user);
+  }
   @Post('logout') @UseGuards(WriteGuard)
   async logout(@Req() req: any, @Res({ passthrough: true }) res: any) {
     await this.auth.logout(req); res.clearCookie(cookieName, { ...cookieOptions(), maxAge: undefined }); return { ok: true };

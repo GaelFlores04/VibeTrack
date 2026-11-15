@@ -49,3 +49,34 @@ test('errores JSON no revelan el cuerpo y devuelven requestId', () => {
   assert.equal(headers.get('X-Request-Id'), output.requestId);
   assert.doesNotMatch(redactError('fetch https://example.test/?api_key=hidden password=hidden'), /hidden/);
 });
+
+
+test('JWT corto: refresh verifica firma y limita duración aun aceptando expiración', async () => {
+  const { TokenService, ACCESS_LIFETIME } = await import('../src/modules/auth/token.service');
+  const { JwtService } = await import('@nestjs/jwt');
+  process.env.JWT_SECRET = randomBytes(48).toString('hex');
+  const service = new TokenService();
+  const token = await service.signAsync({ sub: 'account', jti: 'session' });
+  const payload = await service.verifyAsync(token);
+  assert.equal(payload.exp - payload.iat, ACCESS_LIFETIME);
+  const expired = new JwtService().sign({ sub: 'account', jti: 'session', iat: Math.floor(Date.now() / 1000) - 7200 }, {
+    secret: process.env.JWT_SECRET, algorithm: 'HS256', issuer: 'vibetrack', audience: 'vibetrack-web', expiresIn: 3600,
+  });
+  await assert.rejects(service.verifyAsync(expired));
+  assert.equal((await service.verifyAsync(expired, true)).jti, 'session');
+  await assert.rejects(service.verifyAsync(expired + 'invalid', true));
+});
+
+
+test('recomendaciones públicas toleran base caída al comprobar una cookie vieja', async () => {
+  const { MusicController } = await import('../src/modules/music/music.module');
+  const { ServiceUnavailableException } = await import('@nestjs/common');
+  let account: string | undefined;
+  const music = { recommendations: async (_mood: string, _page: number, _prefs: any, _session: any, userId: string) => {
+    account = userId; return { tracks: [], status: 'exhausted' };
+  } };
+  const auth = { current: async () => { throw new ServiceUnavailableException(); } };
+  const result = await new MusicController(music as any, auth as any).recommendations('feliz', { page: 1 }, {});
+  assert.equal(account, 'guest');
+  assert.deepEqual(result.tracks, []);
+});

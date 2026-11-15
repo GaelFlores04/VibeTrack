@@ -50,6 +50,11 @@ function memoryDatabase() {
     findByIdAndUpdate: async (id: string, update: any) => { const user = users.find(item => item._id === id); Object.assign(user, update.$set); return user; },
   };
   const Session = {
+    updateOne: async (query: any, update: any) => {
+      const item = sessions.find(session => session.userId === query.userId && session.tokenHash === query.tokenHash && session.expiresAt > query.expiresAt.$gt);
+      if (item) Object.assign(item, update.$set);
+      return { matchedCount: item ? 1 : 0 };
+    },
     find: (query: any) => ({ sort: () => ({ skip: (offset: number) => ({ select: async () => sessions.filter(item => item.userId === query.userId).slice().reverse().slice(offset) }) }) }),
     deleteMany: async (query: any) => { for (let i = sessions.length - 1; i >= 0; i--) if (query._id?.$in.includes(sessions[i]._id) || query.userId === sessions[i].userId) sessions.splice(i, 1); },
     create: async (input: any) => { input._id = randomBytes(12).toString('hex'); sessions.push(input); return input; },
@@ -142,6 +147,30 @@ test('rutas HTTP en memoria: registro, login, preferencias aisladas, validación
     assert.equal((await request('logout-all', 'POST', undefined, latestCookie)).status, 201);
     assert.equal(database.sessions.filter(item => item.userId === registered.id).length, 0);
     assert.equal((await request('logout-all', 'POST')).status, 401);
+    const revoked = await request('refresh', 'POST', undefined, latestCookie);
+    assert.equal(await revoked.json().catch(() => null), null);
+    assert.match(revoked.headers.get('set-cookie') || '', /vibetrack_session=;.*Expires=Thu, 01 Jan 1970/, 'la cookie revocada se borra del navegador');
+    assert.equal((await request('refresh', 'POST')).headers.get('set-cookie'), null, 'sin cookie no se envía Set-Cookie');
+    const fresh = await request('login', 'POST', { email: credentials.email, password: credentials.password });
+    const refreshCookie = fresh.headers.get('set-cookie')!.split(';')[0];
+    const refreshed = await request('refresh', 'POST', undefined, refreshCookie);
+    assert.equal((await refreshed.json()).id, registered.id);
+    assert.match(refreshed.headers.get('set-cookie')!, /HttpOnly/);
+    const realNow = Date.now;
+    const started = realNow();
+    try {
+      Date.now = () => started + 50 * 60000;
+      const rotated = await request('refresh', 'POST', undefined, refreshCookie);
+      const rotatedCookie = rotated.headers.get('set-cookie')!.split(';')[0];
+      assert.notEqual(rotatedCookie, refreshCookie);
+      assert.equal(await (await request('me', 'GET', undefined, refreshCookie)).json().catch(() => null), null);
+      assert.equal((await (await request('me', 'GET', undefined, rotatedCookie)).json()).id, registered.id);
+      for (const session of database.sessions) session.expiresAt = new Date(0);
+      Date.now = () => started + 8 * 24 * 60 * 60000;
+      assert.equal(await (await request('refresh', 'POST', undefined, rotatedCookie)).json().catch(() => null), null);
+    } finally { Date.now = realNow; }
+
+
     for (let i = 0; i < 5; i++) assert.equal((await request('login', 'POST', { email: 'missing@example.com', password: 'wrong-password' })).status, 401);
     assert.equal((await request('login', 'POST', { email: 'missing@example.com', password: 'wrong-password' })).status, 429);
 
