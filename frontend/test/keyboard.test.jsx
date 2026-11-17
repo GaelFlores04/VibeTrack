@@ -1,5 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { JSDOM } from 'jsdom';
 import { act, useState } from 'react';
 import { MemoryRouter } from 'react-router-dom';
@@ -8,10 +9,22 @@ import MoodCarousel from '../src/features/moods/MoodCarousel';
 import Autocomplete from '../src/shared/components/Autocomplete';
 import { MiniPlayer } from '../src/features/player/PlayerProvider';
 import PlayerStage from '../src/features/player/PlayerStage';
+import PlaybackDisc from '../src/shared/components/PlaybackDisc';
 
 function fixture(markup, positions = {}) {
   const dom = new JSDOM(`<body>${markup}</body>`, { url: 'http://localhost/', pretendToBeVisual: true });
   const { document, HTMLElement } = dom.window;
+  const animations = [];
+  HTMLElement.prototype.animate = function (keyframes, options) {
+    const animation = {
+      element: this, keyframes, options, playState: 'running', currentTime: 0,
+      play() { this.playState = 'running'; },
+      pause() { this.playState = 'paused'; },
+      cancel() { this.playState = 'idle'; },
+    };
+    animations.push(animation);
+    return animation;
+  };
   // jsdom no hace layout: las coordenadas de cada caso representan el grid renderizado.
   HTMLElement.prototype.getBoundingClientRect = function () {
     const [left, top] = positions[this.id] || [0, 0];
@@ -22,7 +35,7 @@ function fixture(markup, positions = {}) {
   HTMLElement.prototype.scrollTo = function ({ left }) { this.scrollLeft = left; };
   const remove = installKeyboardNavigation(document);
   return {
-    dom, document,
+    dom, document, animations,
     focus(id) { document.getElementById(id).focus(); },
     key(key, options = {}) {
       const event = new dom.window.KeyboardEvent('keydown', { key, bubbles: true, cancelable: true, ...options });
@@ -33,8 +46,9 @@ function fixture(markup, positions = {}) {
   };
 }
 
-async function mount(component) {
+async function mount(component, setup = () => {}) {
   const f = fixture('<div id="root"></div>');
+  setup(f);
   const previous = { window: globalThis.window, document: globalThis.document, ResizeObserver: globalThis.ResizeObserver, act: globalThis.IS_REACT_ACT_ENVIRONMENT };
   globalThis.window = f.dom.window;
   globalThis.document = f.document;
@@ -222,4 +236,82 @@ test('la escena deja de girar fuera de pantalla o en una pestaña oculta', async
     globalThis.IntersectionObserver = previousObserver;
   }
   assert.equal(disconnected, true);
+});
+
+test('el mini inicia el giro lineal y conserva la animación y el ángulo al pausar o cargar', async () => {
+  const track = { id: 'a', title: 'Primera', artist: 'Artista', previewUrl: '/a' };
+  function MiniFixture() {
+    const [status, setStatus] = useState('paused');
+    return <>
+      <button id="play-test" onClick={() => setStatus('playing')}>Sonando</button>
+      <button id="pause-test" onClick={() => setStatus('paused')}>Pausa</button>
+      <button id="loading-test" onClick={() => setStatus('loading')}>Cargando</button>
+      <MiniPlayer track={track} queue={[track]} index={0} status={status} time={{ current: 0, duration: 30 }} volume={1} setVolume={() => {}} expanded={false} setExpanded={() => {}} source={{ key: 'test', path: '/' }} toggle={() => {}} seek={() => {}} close={() => {}} start={() => {}} step={() => {}} engine="preview" playable={track => !!track.previewUrl} />
+    </>;
+  }
+  const f = await mount(<MiniFixture />);
+  let motion;
+  try {
+    const artwork = f.document.querySelector('.mini-artwork');
+    assert.ok(artwork.querySelector('.disc'));
+    motion = f.animations.find(animation => animation.element === artwork);
+    assert.ok(motion);
+    assert.deepEqual(motion.keyframes, [{ transform: 'rotate(0deg)' }, { transform: 'rotate(360deg)' }]);
+    assert.deepEqual(motion.options, { duration: 6000, iterations: Infinity, easing: 'linear' });
+    assert.equal(motion.playState, 'paused');
+    await act(async () => f.document.getElementById('play-test').click());
+    assert.equal(motion.playState, 'running');
+    motion.currentTime = 2100;
+    await act(async () => f.document.getElementById('loading-test').click());
+    assert.equal(motion.playState, 'paused');
+    assert.equal(motion.currentTime, 2100);
+    await act(async () => f.document.getElementById('play-test').click());
+    assert.equal(motion.currentTime, 2100);
+    Object.defineProperty(f.document, 'visibilityState', { configurable: true, value: 'hidden' });
+    await act(async () => f.document.dispatchEvent(new f.dom.window.Event('visibilitychange')));
+    assert.equal(motion.playState, 'paused');
+    Object.defineProperty(f.document, 'visibilityState', { configurable: true, value: 'visible' });
+    await act(async () => f.document.dispatchEvent(new f.dom.window.Event('visibilitychange')));
+    assert.equal(motion.playState, 'running');
+    await act(async () => f.document.getElementById('pause-test').click());
+    assert.equal(motion.playState, 'paused');
+    assert.equal(f.document.querySelector('.mini-artwork'), artwork);
+    assert.equal(f.animations.filter(animation => animation.element === artwork).length, 1);
+  } finally { await f.unmount(); }
+  assert.equal(motion.playState, 'idle');
+});
+
+test('la miniatura compartida de la barra respeta cambios de movimiento reducido', async () => {
+  const track = { id: 'a', title: 'Canción', artist: 'Artista', previewUrl: '/a' };
+  let updatePreference;
+  const media = { matches: false, addEventListener(_event, update) { updatePreference = update; }, removeEventListener() {} };
+  const f = await mount(<PlaybackDisc track={track} size={60} playing />, f => { f.dom.window.matchMedia = () => media; });
+  try {
+    assert.equal(f.animations[0].playState, 'running');
+    assert.equal(f.document.querySelector('.playback-disc').style.getPropertyValue('--size'), '60px');
+    media.matches = true;
+    await act(async () => updatePreference());
+    assert.equal(f.animations[0].playState, 'idle');
+    assert.ok(f.document.querySelector('.playback-disc .disc'));
+    media.matches = false;
+    await act(async () => updatePreference());
+    assert.equal(f.animations.length, 2);
+    assert.equal(f.animations[1].playState, 'running');
+  } finally { await f.unmount(); }
+});
+
+test('el disco conserva una caja visible al quedar dentro del contenedor de animación', async () => {
+  const track = { id: 'a', title: 'Canción', artist: 'Artista', artworkUrl: 'https://example.test/cover.jpg', previewUrl: '/a' };
+  const f = await mount(<PlaybackDisc track={track} size={60} />);
+  try {
+    const stylesheet = f.document.createElement('style');
+    stylesheet.textContent = readFileSync(new URL('../src/styles/base.css', import.meta.url), 'utf8');
+    f.document.head.append(stylesheet);
+    const wrapper = f.document.querySelector('.playback-disc');
+    const disc = wrapper.querySelector('.disc');
+    assert.equal(f.dom.window.getComputedStyle(wrapper).display, 'block');
+    assert.equal(f.dom.window.getComputedStyle(disc).display, 'block', 'un span inline ignora ancho y alto y desaparece con una portada absoluta');
+    assert.equal(disc.style.getPropertyValue('--size'), '60px');
+    assert.equal(disc.querySelector('img').getAttribute('src'), track.artworkUrl);
+  } finally { await f.unmount(); }
 });

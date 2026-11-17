@@ -4,6 +4,7 @@ import { mutate } from '../../shared/services/api';
 import { useAuth } from '../auth/AuthProvider';
 import Icon from '../../shared/components/Icon';
 import Disc from '../../shared/components/Disc';
+import PlaybackDisc from '../../shared/components/PlaybackDisc';
 import ActionLink from '../../shared/components/ActionLink';
 import { useSpotify } from './useSpotify';
 
@@ -257,7 +258,7 @@ export function MiniPlayer({ track, queue, index, status, time, volume, setVolum
       <p className="mini-hint">Atajos: Espacio pausa o continúa · Mayús + flechas cambia de canción.</p>
     </div>}
     <div className="mini-bar">
-      <Disc track={track} size={48} />
+      <PlaybackDisc track={track} size={48} playing={status === 'playing'} className="mini-artwork" />
       <div className="mini-meta">
         <strong>{track.title}</strong>
         <span>{track.artist}{engine === 'spotify' && ' · completa en Spotify'}</span>

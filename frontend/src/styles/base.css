@@ -20,6 +20,7 @@
   --radius: 14px;
   --radius-lg: 22px;
   --ease-out: cubic-bezier(.23, 1, .32, 1);
+  --ease-in-out: cubic-bezier(.77, 0, .175, 1);
   --font-body: 'Atkinson Hyperlegible Next Variable', system-ui, sans-serif;
   --font-brand: 'Saira Variable', 'Arial Narrow', sans-serif;
   --font-lcd: 'Share Tech Mono', ui-monospace, monospace;
@@ -111,7 +112,7 @@ dt { font-weight: 700; }
 dd { margin: 0; color: var(--ink-soft); }
 
 /* CD dibujado (miniaturas y respaldo sin 3D). */
-.disc { --size: 44px; position: relative; flex: none; width: var(--size); height: var(--size); border-radius: 50%; overflow: hidden; background: radial-gradient(circle at 35% 30%, #f4f7fa, #c3cdd8 55%, #98a5b4); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .45), 0 2px 6px rgba(0, 8, 24, .4); }
+.disc { --size: 44px; display: block; position: relative; flex: none; width: var(--size); height: var(--size); border-radius: 50%; overflow: hidden; background: radial-gradient(circle at 35% 30%, #f4f7fa, #c3cdd8 55%, #98a5b4); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .45), 0 2px 6px rgba(0, 8, 24, .4); }
 .disc img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .disc::before { content: ""; position: absolute; inset: 0; z-index: 1; border-radius: 50%; background: conic-gradient(from 200deg, rgba(255,255,255,0) 0deg, rgba(190,235,255,.3) 40deg, rgba(255,255,255,0) 90deg, rgba(255,220,250,.2) 200deg, rgba(255,255,255,0) 260deg); }
 .disc::after { content: ""; position: absolute; z-index: 2; left: 50%; top: 50%; width: 26%; height: 26%; transform: translate(-50%, -50%); border-radius: 50%; background: radial-gradient(circle, var(--deep) 0 24%, #dfe7ef 25% 44%, rgba(210, 225, 240, .85) 45% 100%); }
@@ -134,6 +135,7 @@ dd { margin: 0; color: var(--ink-soft); }
 .mini-player { position: sticky; bottom: 0; z-index: 15; padding: 0 clamp(8px, 2vw, 24px) 12px; }
 .mini-shell { max-width: 1392px; margin: 0 auto; border: 1px solid var(--line-strong); border-radius: var(--radius-lg); background: var(--panel-strong); box-shadow: 0 -6px 24px rgba(0, 8, 24, .45); }
 .mini-bar { padding: .6rem 1rem; display: grid; grid-template-columns: auto minmax(0, 1fr) auto minmax(160px, 1.2fr) auto; align-items: center; gap: .9rem; }
+.playback-disc { display: block; flex: none; width: var(--size); height: var(--size); border-radius: 50%; }
 .mini-meta { display: flex; flex-direction: column; min-width: 0; }
 .mini-meta strong, .mini-meta span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .mini-meta span { font-size: .9rem; color: var(--ink-soft); }
@@ -277,6 +279,7 @@ input[type=range]:focus-visible { outline: 2px solid var(--sky); outline-offset:
   .transport { position: sticky; bottom: 72px; gap: .5rem .8rem; padding: .6rem .8rem; }
   .transport-reason { display: none; }
   .transport-now .disc { --size: 40px !important; }
+  .transport-now .playback-disc { --size: 40px !important; }
   /* En el teléfono el volumen es el del aparato: fuera de la parte fija; el enlace sube junto al título. */
   .transport { grid-template-columns: minmax(0, 1fr) auto; }
   .transport-extra { display: none; }

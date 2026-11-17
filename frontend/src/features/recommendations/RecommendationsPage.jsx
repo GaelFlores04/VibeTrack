@@ -5,6 +5,7 @@ import { formatTime, usePlayer } from '../player/PlayerProvider';
 import PlayerStage from '../player/PlayerStage';
 import { formatDuration, isBlankTrack, reasonTag } from '../player/trackState';
 import Disc from '../../shared/components/Disc';
+import PlaybackDisc from '../../shared/components/PlaybackDisc';
 import Icon from '../../shared/components/Icon';
 import ActionLink from '../../shared/components/ActionLink';
 import { useReducedMotion } from '../../shared/hooks/useReducedMotion';
@@ -174,7 +175,7 @@ function MoodRecommendations({ mood, user }) {
 
       {selected && <section className="transport" aria-label="Controles de reproducción">
         <div className="transport-now">
-          <Disc track={selected} size={60} />
+          <PlaybackDisc track={selected} size={60} playing={playing} />
           <div className="transport-text">
             <p className="transport-title">{selected.title}</p>
             <p className="transport-artist">{selected.artist}</p>

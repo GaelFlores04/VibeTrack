@@ -315,7 +315,7 @@ Fila-botón de 60px con miniatura de CD de 44px, título en negrita y metadatos 
 Barra flotante fija abajo, radio `lg`, degradado vertical de `rgba(20,60,120,.92)` a `rgba(8,30,66,.96)`, borde celeste .28, sombra Dock. Cuatro zonas: ahora suena (disco + título, artista, motivo en `sky`), botones anterior / play / siguiente, progreso con tiempos LCD, y volumen + enlace externo. Bajo 980px se reordena en dos columnas; en móvil queda compacta encima de la navegación inferior y oculta motivo y volumen.
 
 ### Mini Player
-Misma familia que el transporte en `panel-strong` con borde `line-strong`, presente en todas las páginas; cola desplegable con la canción actual resaltada en celeste .14.
+Misma familia que el transporte en `panel-strong` con borde `line-strong`, presente en todas las páginas; cola desplegable con la canción actual resaltada en celeste .14. Su disco y la miniatura de la barra del reproductor comparten `PlaybackDisc`: una vuelta en el plano cada 6 segundos con Web Animations API y velocidad lineal, sólo en reproducción efectiva. Se congela sin reiniciar el ángulo al pausar o cargar y se detiene al ocultar la pestaña. Sin giro con movimiento reducido.
 
 ### Disc (miniatura y textura)
 El motivo del sistema. Círculo con la portada recortada, brillo iridiscente cónico (celeste y rosa muy tenues), anillo central transparente y orificio `deep`. Variante **CD-R** para canciones sin preview confirmado: plata con surcos concéntricos y el título corto escrito con Permanent Marker en `marker-ink`, inclinado y subrayado a mano, que nunca invade el anillo central; el texto sólo aparece desde 56px. Mientras la portada carga, el disco es plata lisa: no se afirma "sin preview" antes de saberlo.
@@ -327,7 +327,7 @@ Reproductor ovalado de plata satinada (`silver-satin`, metalness .82) con aros `
 Pantalla de texto HTML real (no pintada en el 3D) anclada bajo el reproductor: degradado `lcd-ice` → `lcd-ice-deep`, tinta `lcd-ink`, marco hundido, dos líneas en mono tabular (número · título en curso; estado y tiempo).
 
 ### Mood Card
-Tarjeta `lg` sobre `panel` con un disco de color del mood de hasta 140px, el nombre en itálica de marca y la descripción en `ink-soft` sin recorte. Hover: borde `sky` y el disco sube 6px girando 18° (280ms, sólo con puntero fino); pulsado .98.
+Tarjeta `lg` sobre `panel` con un disco de color del mood, el nombre en itálica de marca y la descripción en `ink-soft` sin recorte. Hover: el disco da una vuelta horizontal (`rotateY(360deg)`, perspectiva de 600px, 600ms con `--ease-in-out`). La aceleración y el frenado son progresivos. Se aplica también al disco del carrusel y a las miniaturas de resultados, usando un contenedor estable como zona de hover. Sólo con puntero fino, movimiento permitido y entrada de ratón; el teclado conserva respuesta inmediata. Los CDs de la escena del reproductor mantienen su comportamiento propio.
 
 ## Do's and Don'ts
 

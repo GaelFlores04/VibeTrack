@@ -485,7 +485,6 @@
 
 .mood-card .mood-disc {
   width: clamp(72px, 8vw, 110px);
-  transition: transform 220ms var(--ease-out);
 }
 
 .mood-card-copy {
@@ -675,10 +674,6 @@
     border-color: var(--line-strong);
     background: rgba(20, 60, 110, .55);
     color: var(--ink);
-  }
-
-  .mood-card:hover .mood-disc {
-    transform: rotate(8deg);
   }
 
   .carousel-dots button:hover {
@@ -922,4 +917,25 @@
 
 html[data-input="keyboard"] .carousel-dots button span {
   transition: none;
+}
+
+/* Un giro breve sobre el eje vertical para los discos secundarios. */
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  .mood-disc,
+  .track-list article > .disc {
+    transform: perspective(600px) rotateY(0deg);
+    transition: transform 600ms var(--ease-in-out);
+  }
+
+  html:not([data-input="keyboard"]) .mood-card:hover .mood-disc,
+  html:not([data-input="keyboard"]) .mood-slide:not([inert]) .slide-art:hover .mood-disc,
+  html:not([data-input="keyboard"]) .track-list article:hover > .disc {
+    transform: perspective(600px) rotateY(360deg);
+  }
+}
+
+html[data-input="keyboard"] .mood-disc,
+html[data-input="keyboard"] .track-list article > .disc {
+  transition: none;
+  transform: none;
 }
