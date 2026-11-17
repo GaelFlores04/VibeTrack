@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite --host 127.0.0.1",
     "build": "vite build",
-    "preview": "vite preview --host 127.0.0.1"
+    "preview": "vite preview --host 127.0.0.1",
+    "test": "tsx --tsconfig tsconfig.test.json --test test/*.test.jsx"
   },
   "dependencies": {
     "@fontsource-variable/atkinson-hyperlegible-next": "^5.3.0",
@@ -21,6 +22,8 @@
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^5.0.0",
+    "jsdom": "^26.1.0",
+    "tsx": "^4.23.15",
     "vite": "^7.1.0"
   }
 }

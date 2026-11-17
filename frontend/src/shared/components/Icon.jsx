@@ -1,6 +1,11 @@
 // Iconos de trazo único (24×24, 2 px), dibujados para VibeTrack. Siempre decorativos:
 // el nombre accesible lo lleva el botón que los contiene.
 const paths = {
+  home: <><path d="m3 10 9-7 9 7v9a2 2 0 0 1-2 2h-4v-7H9v7H5a2 2 0 0 1-2-2v-9Z" /></>,
+  'arrow-right': <><path d="M4 12h16M14 6l6 6-6 6" /></>,
+  'arrow-left': <><path d="M20 12H4M10 6l-6 6 6 6" /></>,
+  grid: <><rect x="3" y="3" width="7" height="7" rx="1.5" /><rect x="14" y="3" width="7" height="7" rx="1.5" /><rect x="3" y="14" width="7" height="7" rx="1.5" /><rect x="14" y="14" width="7" height="7" rx="1.5" /></>,
+  slides: <><rect x="6" y="4" width="12" height="16" rx="2" /><path d="M2 7v10M22 7v10" /></>,
   play: <path d="M7 4.5v15l13-7.5-13-7.5Z" fill="currentColor" stroke="none" />,
   pause: <><rect x="6" y="5" width="4" height="14" rx="1" fill="currentColor" stroke="none" /><rect x="14" y="5" width="4" height="14" rx="1" fill="currentColor" stroke="none" /></>,
   previous: <><path d="M19 20 9 12l10-8v16Z" /><path d="M5 19V5" /></>,

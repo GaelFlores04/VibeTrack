@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from './AuthProvider';
 import Autocomplete from '../../shared/components/Autocomplete';
@@ -11,6 +11,15 @@ export default function PreferencesPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
+  const artistField = useRef(null);
+  function removeArtist(name, event) {
+    const tag = event.currentTarget.closest('li');
+    const next = tag.nextElementSibling?.querySelector('button') || tag.previousElementSibling?.querySelector('button');
+    setArtists(items => items.filter(item => item !== name));
+    if (event.detail === 0) requestAnimationFrame(() => {
+      (next?.isConnected ? next : artistField.current?.querySelector('input'))?.focus();
+    });
+  }
   async function save(event) {
     event.preventDefault(); setError(''); setMessage('');
     const names = artists;
@@ -25,11 +34,11 @@ export default function PreferencesPage() {
   }
   return <><h1>Tus preferencias musicales</h1><p>Cuestionario opcional. Tus gustos orientan las recomendaciones: verás más de tus artistas, pero también similares y descubrimientos que encajen con el mood.</p>
     <form className="account-form" onSubmit={save}>
-      <fieldset disabled={busy}><legend>¿Qué géneros te gustan? Elige hasta seis.</legend>
+      <fieldset disabled={busy} data-keyboard-group="grid"><legend>¿Qué géneros te gustan? Elige hasta seis.</legend>
         {Object.entries(genres).map(([value, label]) => <label className="check-option" key={value}><input type="checkbox" checked={selected.includes(value)} disabled={!selected.includes(value) && selected.length >= 6} onChange={event => setSelected(items => event.target.checked ? [...items, value] : items.filter(item => item !== value))} />{label}</label>)}
       </fieldset>
-      <div><Autocomplete selectionOnly label="Busca y selecciona hasta cinco artistas" value={artistQuery} onChange={setArtistQuery} endpoint="/music/artists" disabled={busy || artists.length >= 5} excluded={artists} placeholder="Empieza a escribir un artista…" onSelect={item => { setArtists(items => items.length < 5 && !items.some(name => name.toLocaleLowerCase() === item.name.toLocaleLowerCase()) ? [...items, item.name] : items); setArtistQuery(''); }} />
-        <ul className="artist-tags" aria-label="Artistas seleccionados">{artists.map(name => <li key={name}><span>{name}</span><button type="button" disabled={busy} onClick={() => setArtists(items => items.filter(item => item !== name))} aria-label={`Quitar a ${name}`}>×</button></li>)}</ul>
+      <div ref={artistField}><Autocomplete selectionOnly label="Busca y selecciona hasta cinco artistas" value={artistQuery} onChange={setArtistQuery} endpoint="/music/artists" disabled={busy || artists.length >= 5} excluded={artists} placeholder="Empieza a escribir un artista…" onSelect={item => { setArtists(items => items.length < 5 && !items.some(name => name.toLocaleLowerCase() === item.name.toLocaleLowerCase()) ? [...items, item.name] : items); setArtistQuery(''); }} />
+        <ul className="artist-tags" aria-label="Artistas seleccionados" data-keyboard-group="linear">{artists.map(name => <li key={name}><span>{name}</span><button type="button" disabled={busy} onClick={event => removeArtist(name, event)} aria-label={`Quitar a ${name}`}>×</button></li>)}</ul>
         <p>{artists.length}/5 artistas seleccionados. Selecciona un resultado para añadirlo.</p>
       </div>
       {error && <p role="alert">{error}</p>}{message && <p role="status">{message}</p>}

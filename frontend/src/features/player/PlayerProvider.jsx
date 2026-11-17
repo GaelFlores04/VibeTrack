@@ -4,6 +4,7 @@ import { mutate } from '../../shared/services/api';
 import { useAuth } from '../auth/AuthProvider';
 import Icon from '../../shared/components/Icon';
 import Disc from '../../shared/components/Disc';
+import ActionLink from '../../shared/components/ActionLink';
 import { useSpotify } from './useSpotify';
 
 const PlayerContext = createContext(null);
@@ -215,17 +216,37 @@ export function PlayerProvider({ children }) {
   </PlayerContext.Provider>;
 }
 
-function MiniPlayer({ track, queue, index, status, time, volume, setVolume, error, expanded, setExpanded, source, endAction, toggle, seek, close, start, step, engine, playable }) {
+export function MiniPlayer({ track, queue, index, status, time, volume, setVolume, error, expanded, setExpanded, source, endAction, toggle, seek, close, start, step, engine, playable }) {
   const location = useLocation();
+  const queuePanel = useRef(null);
+  const queueButton = useRef(null);
+  const focusQueue = useRef(false);
+  useEffect(() => {
+    if (expanded && focusQueue.current) {
+      focusQueue.current = false;
+      queuePanel.current?.querySelector('button:not(:disabled)')?.focus();
+    }
+  }, [expanded]);
+  function queueKeyboard(event) {
+    if (event.key !== 'Escape' || !expanded) return;
+    event.preventDefault();
+    event.stopPropagation();
+    setExpanded(false);
+    queueButton.current?.focus();
+  }
+  function toggleQueue(event) {
+    focusQueue.current = !expanded && event.detail === 0;
+    setExpanded(value => !value);
+  }
   const playing = status === 'playing' || status === 'loading';
   const away = source?.path && `${location.pathname}${location.search}` !== source.path;
   const hasPrevious = queue.slice(0, index).some(playable);
   const hasNext = queue.slice(index + 1).some(playable);
-  return <section className="mini-player" aria-label="Reproductor">
+  return <section className="mini-player" aria-label="Reproductor" onKeyDown={queueKeyboard}>
     <div className="mini-shell">
-    {expanded && <div className="mini-queue" id="player-queue">
+    {expanded && <div className="mini-queue" id="player-queue" ref={queuePanel}>
       <h2>Cola · {source?.label || 'Reproduciendo'}</h2>
-      <ol>{queue.map((item, position) => <li key={item.id} aria-current={position === index ? 'true' : undefined}>
+      <ol data-keyboard-group="linear" aria-label="Canciones en la cola">{queue.map((item, position) => <li key={item.id} aria-current={position === index ? 'true' : undefined}>
         <button type="button" disabled={!playable(item)} onClick={() => start(queue, position)}>
           <Disc track={item} size={36} />
           <span className="q-text"><span>{item.title}</span><small>{item.artist}{playable(item) ? '' : ' · sin preview'}</small></span>
@@ -241,7 +262,7 @@ function MiniPlayer({ track, queue, index, status, time, volume, setVolume, erro
         <strong>{track.title}</strong>
         <span>{track.artist}{engine === 'spotify' && ' · completa en Spotify'}</span>
       </div>
-      <div className="mini-controls">
+      <div className="mini-controls" data-keyboard-group="linear">
         <button type="button" className="icon" onClick={() => step(-1)} disabled={!hasPrevious} aria-label="Canción anterior"><Icon name="previous" /></button>
         <button type="button" className="icon primary" onClick={toggle} aria-label={playing ? 'Pausar' : 'Reproducir'}><Icon name={playing ? 'pause' : 'play'} /></button>
         <button type="button" className="icon" onClick={() => step(1)} disabled={!hasNext} aria-label="Canción siguiente"><Icon name="next" /></button>
@@ -252,10 +273,10 @@ function MiniPlayer({ track, queue, index, status, time, volume, setVolume, erro
         <span>{formatTime(time.duration)}</span>
       </div>
       <div className="mini-extra">
-        {away && <Link to={source.path}><Icon name="back" size={16} /> Volver a {source.label}</Link>}
-        <button type="button" onClick={() => setExpanded(value => !value)} aria-expanded={expanded} aria-controls="player-queue"><Icon name="queue" size={18} /> {index + 1}/{queue.length}<span className="visually-hidden"> en la cola</span></button>
-        <a href={track.externalUrl} target="_blank" rel="noreferrer">{track.provider === 'itunes' ? 'iTunes' : 'Deezer'}</a>
-        <button type="button" className="icon" onClick={close} aria-label="Cerrar reproductor"><Icon name="close" /></button>
+        {away && <ActionLink to={source.path} icon="back" aria-label={`Volver a ${source.label}`}>Volver a la lista</ActionLink>}
+        <button type="button" ref={queueButton} onClick={toggleQueue} aria-expanded={expanded} aria-controls="player-queue"><Icon name="queue" size={18} /> {index + 1}/{queue.length}<span className="visually-hidden"> en la cola</span></button>
+        <ActionLink href={track.externalUrl} icon="external">{track.provider === 'itunes' ? 'iTunes' : track.provider === 'lastfm' ? 'Last.fm' : 'Deezer'}</ActionLink>
+        <button type="button" className="icon" onClick={() => { close(); document.getElementById('content')?.focus({ preventScroll: true }); }} aria-label="Cerrar reproductor"><Icon name="close" /></button>
       </div>
     </div>
     {error && <p className="mini-error" role="alert">{error}</p>}

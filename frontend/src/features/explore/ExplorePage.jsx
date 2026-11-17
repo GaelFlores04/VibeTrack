@@ -1,17 +1,108 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useResource } from '../../shared/hooks/useResource';
 import ResourceState from '../../shared/components/ResourceState';
 import TrackList from '../../shared/components/TrackList';
 import Autocomplete from '../../shared/components/Autocomplete';
+import Icon from '../../shared/components/Icon';
+import { usePlayer } from '../player/PlayerProvider';
+import ExplorePlayer from '../player/ExplorePlayer';
+
+const SEARCH_IDEAS = ['Daft Punk', 'The Strokes', 'Karol G', 'Norah Jones'];
+
 export default function ExplorePage() {
+  const player = usePlayer();
   const [params, setParams] = useSearchParams();
   const term = params.get('q') || '';
   const [query, setQuery] = useState(term);
+  const [, setMatchesVersion] = useState(0);
   const resource = useResource(term ? `/music/search?q=${encodeURIComponent(term)}` : null);
-  function submit(event) { event.preventDefault(); if (query.trim().length >= 2) setParams({ q: query.trim() }); }
-  return <><h1>Explorar música</h1><p>Busca una canción o artista y escucha los previews disponibles en Deezer.</p>
-    <form onSubmit={submit}><div className="search"><Autocomplete label="Canción o artista" value={query} onChange={setQuery} endpoint="/music/suggestions" placeholder="Empieza a escribir…" onSelect={item => { const next = (item.kind === 'artist' ? item.name : `${item.artist} ${item.name}`).slice(0, 100); setQuery(next); setParams({ q: next }); }} /><button disabled={query.trim().length < 2}>Buscar</button></div></form>
-    <ResourceState resource={resource}>{resource.data && <><h2>Resultados</h2><p role="status">{resource.data.length} resultados para «{term}».</p><TrackList tracks={resource.data} source={{ key: `search:${term}`, label: `«${term}»`, path: `/explorar?q=${encodeURIComponent(term)}` }} /></>}</ResourceState>
-  </>;
+  const source = { key: `search:${term}`, label: `«${term}»`, path: `/explorar?q=${encodeURIComponent(term)}` };
+
+  // Atrás y Adelante también restauran el texto del buscador.
+  useEffect(() => { setQuery(term); }, [term]);
+
+  useEffect(() => {
+    if (!player.spotify.ready || !resource.data?.length) return;
+    let current = true;
+    player.spotify.match(resource.data).then(() => {
+      if (current) setMatchesVersion(version => version + 1);
+    }).catch(() => {});
+    return () => { current = false; };
+  }, [player.spotify.ready, player.spotify.match, resource.data]);
+
+  function search(value) {
+    const next = value.trim().slice(0, 100);
+    if (next.length < 2) return;
+    setQuery(next);
+    setParams({ q: next });
+  }
+
+  function submit(event) {
+    event.preventDefault();
+    if (query.trim() === term) resource.retry();
+    else search(query);
+  }
+
+  function selectSuggestion(item) {
+    search(item.kind === 'artist' ? item.name : `${item.artist} ${item.name}`);
+  }
+
+  return (
+    <section className="explore-page" aria-labelledby="explore-title">
+      <header className="page-heading">
+        <div>
+          <h1 id="explore-title">Sigue tu curiosidad.</h1>
+          <p className="lede">Esa canción que tienes en mente. O tu próximo descubrimiento.</p>
+        </div>
+      </header>
+      <form className="explore-search" role="search" aria-label="Buscar música" onSubmit={submit}>
+        <div className="search">
+          <Autocomplete
+            label="Canción o artista"
+            value={query}
+            onChange={setQuery}
+            endpoint="/music/suggestions"
+            placeholder="¿Qué te gustaría escuchar?"
+            onSelect={selectSuggestion}
+          />
+          <button type="submit" className="primary" disabled={query.trim().length < 2}>
+            <Icon name="search" size={18} />Buscar
+          </button>
+        </div>
+        <p className="search-help">Previews de 30 segundos cuando están disponibles.</p>
+      </form>
+
+      <div className="explore-workspace">
+        <ExplorePlayer player={player} tracks={resource.data || []} source={source} />
+        <div className="explore-results">
+
+          {!term && (
+            <section className="search-empty" aria-labelledby="search-ideas-title">
+              <h2 id="search-ideas-title">¿Por dónde empezamos?</h2>
+              <p>Busca por nombre o prueba con uno de estos artistas.</p>
+              <ul className="search-suggestions" data-keyboard-group="linear" aria-label="Artistas para empezar">
+                {SEARCH_IDEAS.map(artist => <li key={artist}><button type="button" onClick={() => search(artist)}>{artist}<Icon name="arrow-right" size={16} /></button></li>)}
+              </ul>
+            </section>
+          )}
+
+          <ResourceState resource={resource}>
+            {resource.data && (
+              <section aria-labelledby="results-title">
+                <header className="search-results-header">
+                  <h2 id="results-title">Resultados para «{term}»</h2>
+                  <p role="status">{resource.data.length} {resource.data.length === 1 ? 'canción' : 'canciones'}</p>
+                </header>
+                <TrackList
+                  tracks={resource.data}
+                  source={source}
+                />
+              </section>
+            )}
+          </ResourceState>
+        </div>
+      </div>
+    </section>
+  );
 }

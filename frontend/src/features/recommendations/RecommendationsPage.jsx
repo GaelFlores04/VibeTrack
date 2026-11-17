@@ -6,6 +6,7 @@ import PlayerStage from '../player/PlayerStage';
 import { formatDuration, isBlankTrack, reasonTag } from '../player/trackState';
 import Disc from '../../shared/components/Disc';
 import Icon from '../../shared/components/Icon';
+import ActionLink from '../../shared/components/ActionLink';
 import { useReducedMotion } from '../../shared/hooks/useReducedMotion';
 import { useRecommendations } from './useRecommendations';
 
@@ -111,6 +112,10 @@ function MoodRecommendations({ mood, user }) {
   const stageLabel = selected ? `Reproductor con el CD de ${selected.title}, de ${selected.artist}. ${blank ? 'Sin preview.' : playing ? 'Sonando.' : 'Detenido.'} La pila tiene ${Math.max(0, tracks.length - 1)} CDs más.` : 'Reproductor vacío.';
 
   return <div className="rec-page">
+    <nav className="rec-breadcrumb" aria-label="Ubicación">
+      <Link to="/moods"><Icon name="arrow-left" size={16} />Moods</Link>
+      <span aria-hidden="true">/</span><span aria-current="page">{moodName}</span>
+    </nav>
     <div className="rec-head">
       <div>
         <h1>{moodName}</h1>
@@ -146,7 +151,7 @@ function MoodRecommendations({ mood, user }) {
 
       <section className="rec-list" aria-labelledby="list-title">
         <h2 id="list-title">Sigue en la tanda</h2>
-        <ol ref={list}>
+        <ol ref={list} data-keyboard-group="linear" aria-label="Canciones de la tanda">
           {tracks.map((track, index) => {
             const isSelected = track.id === selected?.id;
             const noPreview = isBlankTrack(track);
@@ -174,17 +179,17 @@ function MoodRecommendations({ mood, user }) {
             <p className="transport-title">{selected.title}</p>
             <p className="transport-artist">{selected.artist}</p>
             {selected.recommendationReason && <p className="transport-reason">{selected.recommendationReason}</p>}
-            {!blank && <a className="transport-link-mobile" href={selected.externalUrl} target="_blank" rel="noreferrer">{selected.provider === 'itunes' ? 'Ver en iTunes' : 'Ver en Deezer'}</a>}
+            {!blank && <ActionLink className="transport-link-mobile" href={selected.externalUrl} icon="external">{selected.provider === 'itunes' ? 'iTunes' : selected.provider === 'lastfm' ? 'Last.fm' : 'Deezer'}</ActionLink>}
           </div>
         </div>
-        <div className="transport-buttons">
+        <div className="transport-buttons" data-keyboard-group="linear">
           <button type="button" className="icon" onClick={() => move(-1)} disabled={selectedIndex <= 0} aria-label="Canción anterior"><Icon name="previous" /></button>
           <button type="button" className="icon primary play" onClick={togglePlay} disabled={blank || !player.playable(selected)} aria-label={blank ? 'Sin preview' : playing ? 'Pausar' : 'Reproducir'}><Icon name={playing ? 'pause' : 'play'} size={24} /></button>
           <button type="button" className="icon" onClick={() => move(1)} disabled={selectedIndex >= tracks.length - 1} aria-label="Canción siguiente"><Icon name="next" /></button>
         </div>
         <div className="transport-progress lcd-text">
           {blank
-            ? <p className="no-preview">Sin preview de 30 s. <a href={selected.externalUrl} target="_blank" rel="noreferrer">Escúchala en {selected.provider === 'itunes' ? 'iTunes' : selected.provider === 'deezer' ? 'Deezer' : 'Last.fm'}</a></p>
+            ? <div className="no-preview"><span>Sin preview de 30 s.</span><ActionLink href={selected.externalUrl} icon="external">Escuchar en {selected.provider === 'itunes' ? 'iTunes' : selected.provider === 'deezer' ? 'Deezer' : 'Last.fm'}</ActionLink></div>
             : <>
               <span>{formatTime(current)}</span>
               <input type="range" min="0" max={duration} step="0.5" value={Math.min(current, duration)} disabled={!isLoaded} style={{ '--fill': `${Math.min(100, (current / duration) * 100)}%` }} onChange={event => player.seek(Number(event.target.value))} aria-label="Posición en la canción" aria-valuetext={`${formatTime(current)} de ${formatTime(duration)}`} />
@@ -193,12 +198,12 @@ function MoodRecommendations({ mood, user }) {
         </div>
         <div className="transport-extra">
           <label className="volume"><Icon name="volume" /><span className="visually-hidden">Volumen</span><input type="range" min="0" max="1" step="0.05" value={player.volume} style={{ '--fill': `${player.volume * 100}%` }} onChange={event => player.setVolume(Number(event.target.value))} /></label>
-          {!blank && <a href={selected.externalUrl} target="_blank" rel="noreferrer">{selected.provider === 'itunes' ? 'Ver en iTunes' : selected.provider === 'deezer' ? 'Ver en Deezer' : 'Ver en Last.fm'}</a>}
+          {!blank && <ActionLink href={selected.externalUrl} icon="external">{selected.provider === 'itunes' ? 'iTunes' : selected.provider === 'deezer' ? 'Deezer' : 'Last.fm'}</ActionLink>}
         </div>
         {isLoaded && player.error && <p className="transport-error" role="alert">{player.error}</p>}
       </section>}
     </div>}
 
-    <p className="rec-foot"><Link to="/moods">Cambiar de mood</Link> · <Link to="/explorar">Buscar música</Link></p>
+    <nav className="rec-foot" aria-label="Seguir explorando"><ActionLink to="/moods" icon="moods">Cambiar de mood</ActionLink><ActionLink to="/explorar" icon="search">Buscar música</ActionLink></nav>
   </div>;
 }
