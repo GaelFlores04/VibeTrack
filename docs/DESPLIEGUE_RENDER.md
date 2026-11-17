@@ -1,6 +1,6 @@
 # Publicar VibeTrack en Render Free
 
-VibeTrack se publica como una aplicación web: quien la visita abre una URL HTTPS en su navegador, desde cualquier computadora, tableta o teléfono, sin descargar nada. Además es **instalable**: en Android (Chrome) aparece "Instalar app" y en iPhone (Safari) "Compartir → Añadir a pantalla de inicio"; se abre a pantalla completa con su icono, desde Moods. Se necesitan navegadores modernos. El audio requiere una acción del usuario y Spotify completo depende del navegador, Premium y los permisos de la app de Spotify.
+VibeTrack se publica como una aplicación web: quien la visita abre una URL HTTPS en su navegador, desde cualquier computadora, tableta o teléfono, sin descargar nada. Es un sitio web normal: se comparte y se abre con su enlace, sin modo de app instalable. Se necesitan navegadores modernos. El audio requiere una acción del usuario y Spotify completo depende del navegador, Premium y los permisos de la app de Spotify.
 
 ## Arquitectura preparada
 
@@ -39,7 +39,7 @@ Un secreto de cifrado diferente al del entorno anterior obliga a reconectar los 
 - Rutas de React accesibles al recargar; las rutas `/api` y los archivos inexistentes no se sustituyen por HTML.
 - Políticas CSP separadas para la web y la API; cookies seguras de producción (`HttpOnly`, `Secure`, `SameSite=Strict`) y origen HTTPS validado.
 - HTTPS obligatorio: HSTS de un año con subdominios y, como defensa adicional al proxy de Render, redirección 308 a `https://` de toda petición que llegue por HTTP (`/api/health` queda exenta para las comprobaciones internas).
-- Instalable: `manifest.webmanifest` con iconos de 192 y 512 px (incluido uno *maskable* para Android) e `apple-touch-icon` para iOS.
+- Iconos del sitio: favicon SVG y `apple-touch-icon` (el icono que muestra el teléfono si se guarda el enlace).
 - Memoria: el heap de Node se limita a 384 MB (`NODE_OPTIONS`) para no superar los 512 MB del plan gratuito; en reposo usa unos 85 MB.
 - El proxy se declara explícitamente mediante `TRUST_PROXY_HOPS`; el valor del Blueprint corresponde al servicio detrás del proxy de Render. En otros alojamientos se debe ajustar a su topología.
 - La escena 3D se descarga aparte. Deja de girar cuando sale de pantalla o la pestaña se oculta, sin pausar la música. La caché de texturas pasa de 40 a 16 entradas. Existe respaldo sin WebGL.
@@ -52,7 +52,7 @@ npm test
 npm run check:production
 ```
 
-`check:production` arranca y cierra un proceso aislado en un puerto local libre. No usa MongoDB, credenciales reales ni proveedores externos. Comprueba el arranque compilado, rutas, archivos estáticos, API, CSP, HSTS, la redirección HTTPS y el manifiesto. Docker Desktop debe estar iniciado para verificar además la imagen con `docker build -t vibetrack .`.
+`check:production` arranca y cierra un proceso aislado en un puerto local libre. No usa MongoDB, credenciales reales ni proveedores externos. Comprueba el arranque compilado, rutas, archivos estáticos, API, CSP, HSTS, la redirección HTTPS y los iconos del sitio. Docker Desktop debe estar iniciado para verificar además la imagen con `docker build -t vibetrack .`.
 
 ## Límites del plan gratuito
 

@@ -45,19 +45,16 @@ async function main() {
     const moods = await fetch(`${origin}/api/moods`);
     assert.equal((await moods.json()).length, 6);
     assert.equal((await fetch(`${origin}/api/unknown`)).status, 404);
-    // Instalable en móviles: manifiesto e iconos servidos con su tipo.
-    const manifest = await fetch(`${origin}/manifest.webmanifest`);
-    assert.equal(manifest.status, 200);
-    assert.match(manifest.headers.get('content-type'), /manifest\+json|json/);
-    assert.ok((await manifest.json()).icons.some(icon => icon.sizes === '512x512'));
-    assert.match((await fetch(`${origin}/icon-192.png`)).headers.get('content-type'), /image\/png/);
+    // Sitio web (sin modo app instalable): iconos del sitio servidos con su tipo.
+    assert.match((await fetch(`${origin}/icon.svg`)).headers.get('content-type'), /image\/svg\+xml/);
+    assert.match((await fetch(`${origin}/apple-touch-icon.png`)).headers.get('content-type'), /image\/png/);
     // HTTPS: HSTS en producción y redirección 308 de lo que llegó por HTTP al proxy.
     assert.match((await fetch(`${origin}/api/health`)).headers.get('strict-transport-security') || '', /max-age=31536000/);
     const insecure = await fetch(`${origin}/moods?x=1`, { redirect: 'manual', headers: { 'x-forwarded-proto': 'http' } });
     assert.equal(insecure.status, 308);
     assert.equal(insecure.headers.get('location'), `https://127.0.0.1:${port}/moods?x=1`);
     assert.equal((await fetch(`${origin}/api/health`, { headers: { 'x-forwarded-proto': 'http' } })).status, 200, 'la salud no se redirige');
-    console.log('Producción verificada: web, rutas React, API, caché, CSP, HSTS, redirección HTTPS y manifiesto; sin servicios externos.');
+    console.log('Producción verificada: web, rutas React, API, caché, CSP, HSTS, redirección HTTPS e iconos; sin servicios externos.');
   } finally {
     child.kill();
     await stopped;
