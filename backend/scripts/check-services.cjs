@@ -62,10 +62,38 @@ async function checkLastfm() {
   } catch { console.error('Last.fm: no se pudo consultar el servicio. Comprueba la conexión de red y reintenta.'); return false; }
 }
 
+async function checkDeezer() {
+  try {
+    const response = await fetch('https://api.deezer.com/search?q=coldplay%20fix%20you&limit=1', { signal: AbortSignal.timeout(10000) });
+    const body = await response.json();
+    const track = body.data?.[0];
+    if (!response.ok || body.error || !track) { console.error('Deezer: respuesta no válida. Reintenta más tarde.'); return { ok: false }; }
+    console.log(`Deezer: búsqueda correcta${track.preview ? ' con preview' : ''}.`);
+    return { ok: true, isrc: track.isrc };
+  } catch { console.error('Deezer: no se pudo consultar el servicio. Comprueba la conexión de red.'); return { ok: false }; }
+}
+
+async function checkReccobeats(isrc) {
+  if (process.env.RECCOBEATS_ENABLED === 'false') { console.log('ReccoBeats: desactivado (RECCOBEATS_ENABLED=false); se usarán sólo etiquetas.'); return true; }
+  try {
+    const response = await fetch(`https://api.reccobeats.com/v1/audio-features?ids=${encodeURIComponent(isrc || 'GBAYE0500605')}`, { signal: AbortSignal.timeout(10000) });
+    const body = await response.json();
+    const item = body.content?.[0];
+    if (!response.ok || typeof item?.valence !== 'number') { console.error('ReccoBeats: sin rasgos de audio. La clasificación usará etiquetas de Last.fm.'); return false; }
+    console.log(`ReccoBeats: rasgos de audio correctos (valence ${item.valence}, energy ${item.energy}).`);
+    return true;
+  } catch { console.error('ReccoBeats: no se pudo consultar el servicio. La clasificación usará etiquetas de Last.fm.'); return false; }
+}
+
 if (require.main === module) (async () => {
   const mongo = await checkMongo();
-  const lastfm = process.argv.includes('--mongo-only') ? true : await checkLastfm();
-  process.exitCode = mongo && lastfm ? 0 : 1;
+  if (process.argv.includes('--mongo-only')) { process.exitCode = mongo ? 0 : 1; return; }
+  const lastfm = await checkLastfm();
+  const deezer = await checkDeezer();
+  const reccobeats = await checkReccobeats(deezer.isrc);
+  // ReccoBeats es opcional: su caída no impide recomendar.
+  process.exitCode = mongo && lastfm && deezer.ok ? 0 : 1;
+  if (!reccobeats) console.log('Aviso: ReccoBeats no disponible; el servicio sigue funcionando con etiquetas.');
 })().catch(() => { console.error('No se pudo completar la comprobación de servicios.'); process.exitCode = 1; });
 
 module.exports = { describeMongoError };

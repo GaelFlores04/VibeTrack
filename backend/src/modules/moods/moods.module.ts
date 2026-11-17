@@ -1,4 +1,5 @@
 import { Controller, Get, Module } from '@nestjs/common';
+import { PROFILES } from '../music/recommendation-engine';
 
 export const MOODS = [
   { slug: 'feliz', name: 'Feliz', tag: 'happy' },
@@ -9,6 +10,6 @@ export const MOODS = [
   { slug: 'cansado', name: 'Cansado', tag: 'ambient' },
 ];
 @Controller('moods')
-class MoodsController { @Get() list() { return MOODS.map(({ slug, name }) => ({ slug, name })); } }
+class MoodsController { @Get() list() { return MOODS.map(({ slug, name }) => ({ slug, name, description: PROFILES[slug].description })); } }
 @Module({ controllers: [MoodsController] })
 export class MoodsModule {}
