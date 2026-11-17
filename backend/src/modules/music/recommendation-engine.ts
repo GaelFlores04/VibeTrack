@@ -1,17 +1,21 @@
 import { matchingTitle } from './track-matching';
 import type { Track } from './music.types';
+import type { LyricProfile, LyricTheme } from './lyrics-lexicon';
 
 // styleOf: géneros deducidos de los artistas elegidos (género -> artista). Sólo sirve de
 // respaldo cuando las canciones del artista y de sus similares no bastan para el mood.
 // taste: perfil aprendido (etiquetas, artistas escuchados y sonido promedio). surprise: esta tanda
 // incluye una sorpresa. Ninguno de los dos cambia qué es favorito: sólo afinan los descubrimientos.
-export interface Preferences { genres: string[]; artists: string[]; styleOf?: Record<string, string>; taste?: Taste; surprise?: boolean }
+// spotifyArtists: los más escuchados en Spotify (ya incluidos en artists); sólo cambia el motivo mostrado.
+export interface Preferences { genres: string[]; artists: string[]; spotifyArtists?: string[]; styleOf?: Record<string, string>; taste?: Taste; surprise?: boolean }
 export interface Taste { tags: Record<string, number>; artists?: Record<string, number>; audio?: AudioFeatures }
 export const GENRE_KEYS = ['pop', 'rock', 'indie', 'electronic', 'hip-hop', 'r&b', 'latin', 'jazz', 'classical', 'folk', 'metal', 'ambient'];
 // Rasgos de audio (ReccoBeats, escala 0-1) que describen cómo suena la grabación.
 export interface AudioFeatures { valence: number; energy: number; danceability: number; acousticness: number; tempo?: number }
 export interface Candidate extends Track {
   audio?: AudioFeatures; match?: Track; audioChecked?: boolean;
+  // Perfil de la letra (diccionario local). La letra en sí nunca se guarda.
+  lyrics?: LyricProfile | null; lyricsChecked?: boolean;
   tags?: string[]; listeners?: number; curated?: boolean; familiarity?: number; energy?: number;
   moodEvidence?: string[]; recommendationReason?: string;
   sourceGenres?: string[]; relatedTo?: string; metadataChecked?: boolean; retryAt?: number;
@@ -21,10 +25,11 @@ export interface Candidate extends Track {
 export const normalize = (value: string) => value.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
 type AudioRange = Partial<Record<'valence' | 'energy' | 'danceability' | 'acousticness', [number, number]>>;
 // tempo: BPM percibidos (ver perceivedTempo). Señal suave: resta afinidad, nunca descarta por sí sola.
-type MoodProfile = { tags: string[]; positive: string[]; negative: string[]; energy: number; audio: AudioRange; tempo: [number, number]; description: string; seeds: Array<[string, string, string, number]> };
+// falloff: tolerancia por rasgo (por defecto .25). darkMinEnergy: energía mínima si la canción es oscura (valence < .3).
+type MoodProfile = { tags: string[]; positive: string[]; negative: string[]; energy: number; audio: AudioRange; tempo: [number, number]; falloff?: Partial<Record<keyof AudioRange, number>>; darkMinEnergy?: number; description: string; seeds: Array<[string, string, string, number]> };
 export const PROFILES: Record<string, MoodProfile> = {
   feliz: {
-    audio: { valence: [.6, 1], energy: [.45, 1], danceability: [.45, 1] }, tempo: [100, 170],
+    audio: { valence: [.55, 1], energy: [.45, 1], danceability: [.45, 1] }, tempo: [88, 170],
     tags: ['happy', 'feel good', 'upbeat'], positive: ['happy', 'feel good', 'upbeat', 'summer', 'funk', 'disco', 'dance pop'], negative: ['sad', 'depressing', 'melancholy', 'dark ambient', 'funeral'], energy: .75,
     description: 'Alegre y luminoso; prioriza temas animados y evita señales claramente melancólicas.',
     seeds: [['Happy', 'Pharrell Williams', 'pop', .8], ['Get Lucky', 'Daft Punk', 'electronic', .7], ['September', 'Earth, Wind & Fire', 'funk', .8], ['Walking on Sunshine', 'Katrina & The Waves', 'pop', .85], ["CAN’T STOP THE FEELING!", 'Justin Timberlake', 'pop', .85], ['Levitating', 'Dua Lipa', 'pop', .75]],
@@ -36,7 +41,8 @@ export const PROFILES: Record<string, MoodProfile> = {
     seeds: [['Dreams', 'Fleetwood Mac', 'rock', .4], ['Better Together', 'Jack Johnson', 'folk', .3], ['Sunset Lover', 'Petit Biscuit', 'electronic', .3], ['Sunday Morning', 'Maroon 5', 'pop', .4], ['Banana Pancakes', 'Jack Johnson', 'folk', .25], ['Come Away With Me', 'Norah Jones', 'jazz', .2]],
   },
   motivado: {
-    audio: { energy: [.7, 1], danceability: [.4, 1] }, tempo: [80, 195],
+    // Motivar exige energía de verdad: oscuro y a medio gas es melancolía (Lurk, Dealer), no impulso.
+    audio: { energy: [.65, 1], danceability: [.4, 1] }, tempo: [80, 195], falloff: { energy: .1 }, darkMinEnergy: .75,
     tags: ['workout', 'energetic', 'motivational'], positive: ['workout', 'motivational', 'motivation', 'energetic', 'upbeat', 'power', 'running'], negative: ['sleep', 'sleepy', 'ambient', 'sad', 'depressing'], energy: .9,
     description: 'Impulso y energía para moverte; evita canciones de descanso o tristeza.',
     seeds: [['Lose Yourself', 'Eminem', 'hip-hop', .85], ['Stronger', 'Kanye West', 'hip-hop', .85], ["Don't Stop Me Now", 'Queen', 'rock', .9], ['Eye of the Tiger', 'Survivor', 'rock', .85], ['Titanium', 'David Guetta', 'electronic', .9], ['Till I Collapse', 'Eminem', 'hip-hop', .95]],
@@ -90,11 +96,14 @@ export function tempoMatch(features: AudioFeatures, slug: string): number {
 }
 export function audioMatch(features: AudioFeatures, slug: string): number {
   let score = 1;
-  for (const [name, [min, max]] of Object.entries(PROFILES[slug].audio) as Array<[keyof AudioRange, [number, number]]>) {
+  const profile = PROFILES[slug];
+  for (const [name, [min, max]] of Object.entries(profile.audio) as Array<[keyof AudioRange, [number, number]]>) {
     const value = features[name];
     const distance = value < min ? min - value : value > max ? value - max : 0;
-    score *= Math.max(0, 1 - distance / .25);
+    score *= Math.max(0, 1 - distance / (profile.falloff?.[name] ?? .25));
   }
+  // Oscura y con energía media no es este mood (Lose Yourself, oscura pero a .74, sí lo es).
+  if (profile.darkMinEnergy && features.valence < .3) score *= Math.max(0, 1 - Math.max(0, profile.darkMinEnergy - features.energy) / .1);
   return score * tempoMatch(features, slug);
 }
 export function moodAffinity(track: Candidate, slug: string): number {
@@ -111,7 +120,33 @@ export function moodAffinity(track: Candidate, slug: string): number {
   const audio = audioMatch(track.audio, slug);
   // Sin etiquetas, el audio solo debe encajar con claridad; con etiquetas ambas señales se promedian.
   const byAudio = audio >= .8 ? .65 + .35 * (audio - .8) / .2 : 0;
-  return tagged ? Math.max(byAudio, .5 * tagged + .5 * audio) : byAudio;
+  return lyricAdjust(track, slug, tagged ? Math.max(byAudio, .5 * tagged + .5 * audio) : byAudio);
+}
+
+// Letra: veta lo que contradice el mood y matiza lo que encaja; nunca rescata un tema que no suena al mood.
+// El desamor movido (p. ej. Tusa) sólo cabe en motivado: queda fuera de feliz, triste (por audio) y romántico.
+const LYRIC_RULES: Record<string, { veto: LyricTheme[]; boost: LyricTheme[]; ratio: number }> = {
+  feliz: { veto: ['heartbreak', 'sadness'], boost: ['joy', 'party'], ratio: 1 },
+  triste: { veto: ['party', 'joy'], boost: ['heartbreak', 'sadness'], ratio: 1 },
+  romantico: { veto: ['heartbreak'], boost: ['love'], ratio: .8 },
+  // El desamor movido sí cabe en motivado; una letra de tristeza no.
+  motivado: { veto: ['sadness'], boost: ['motivation', 'party'], ratio: 1 },
+  relajado: { veto: [], boost: ['love'], ratio: 1 },
+  cansado: { veto: ['party'], boost: [], ratio: 1 },
+};
+const LYRIC_VETO_MIN = .45;
+export function lyricVeto(track: Candidate, slug: string): boolean {
+  const lyrics = track.lyrics, rules = LYRIC_RULES[slug];
+  if (!lyrics || !rules) return false;
+  // "Lo que encaja" se compara contra joy en feliz; la fiesta no salva al desamor.
+  const support = slug === 'feliz' ? lyrics.joy : Math.max(0, ...rules.boost.map(theme => lyrics[theme]));
+  return rules.veto.some(theme => lyrics[theme] >= LYRIC_VETO_MIN && lyrics[theme] >= support * rules.ratio);
+}
+function lyricAdjust(track: Candidate, slug: string, fit: number): number {
+  if (!track.lyrics || fit <= 0) return fit;
+  if (lyricVeto(track, slug)) return 0;
+  const boost = Math.max(0, ...(LYRIC_RULES[slug]?.boost || []).map(theme => track.lyrics![theme]));
+  return Math.min(1, fit + .06 * boost);
 }
 export function genreMatches(genre: string, tags: string[]) {
   const aliases: Record<string, string[]> = { electronic: ['electronic', 'electronica', 'dance', 'house', 'downtempo'], 'hip-hop': ['hip hop', 'hip-hop', 'rap'], 'r&b': ['r&b', 'rnb', 'soul'], latin: ['latin', 'latino', 'reggaeton', 'latin pop'], classical: ['classical', 'piano', 'instrumental'], indie: ['indie', 'indie pop', 'indie rock'], pop: ['pop', 'dance pop'], rock: ['rock', 'alternative rock', 'soft rock', 'alternative', 'britpop'] };
@@ -122,6 +157,7 @@ export function personalAffinity(track: Candidate, preferences?: Preferences | n
   if (!hasPreferences(preferences)) return 0;
   if (preferences!.artists.some(artist => normalize(artist) === normalize(track.artist))) return 1;
   if (track.relatedTo && preferences!.artists.some(artist => normalize(artist) === normalize(track.relatedTo!))) return .8;
+  if (track.via && preferences!.artists.some(artist => normalize(artist) === normalize(track.via!))) return .7;
   if (preferences!.genres.some(genre => genreMatches(genre, trackGenreTags(track)))) return .65;
   if (styleArtist(track, preferences)) return .5;
   return 0;
@@ -133,10 +169,10 @@ function styleArtist(track: Candidate, preferences?: Preferences | null): string
   return genre ? preferences!.styleOf![genre] : undefined;
 }
 // Géneros dominantes de un artista a partir de sus etiquetas de Last.fm (normalizadas a 100).
-export function artistGenres(tags: Array<{ name: string; count: number }>, limit = 2): string[] {
+export function artistGenres(tags: Array<{ name: string; count: number }>, limit = 1, minCount = 40): string[] {
   const found: string[] = [];
   for (const tag of [...tags].sort((a, b) => b.count - a.count)) {
-    if (tag.count < 20) break;
+    if (tag.count < minCount) break;
     const genre = GENRE_KEYS.find(item => genreMatches(item, [tag.name]));
     if (genre && !found.includes(genre)) found.push(genre);
     if (found.length === limit) break;
@@ -154,8 +190,9 @@ export function bucketOf(track: Candidate, preferences?: Preferences | null): Bu
 // Para 7: 3 de tus artistas, 2 cercanos (similares, tus géneros o su estilo) y 2 para descubrir.
 // Sin artistas elegidos: 5 de tus géneros y 2 para descubrir. Si un grupo no alcanza, otro completa.
 export function quotas(preferences: Preferences | null | undefined, limit = 7): Record<Bucket, number> {
-  const discovery = Math.min(2, Math.max(1, Math.round(limit * .28)));
-  const favorite = preferences?.artists.length ? Math.round(limit * .43) : 0;
+  // Con artistas: 4 favoritos, 2 cercanos, 1 descubrimiento (o la sorpresa). Sólo géneros: 5 y 2.
+  const favorite = preferences?.artists.length ? Math.round(limit * .57) : 0;
+  const discovery = favorite ? 1 : Math.min(2, Math.max(1, Math.round(limit * .28)));
   return { favorite, near: Math.max(0, limit - favorite - discovery), discovery };
 }
 // Un descubrimiento debe encajar claramente con el mood, no sólo pasar el umbral.
@@ -205,8 +242,18 @@ export function novelty(listeners?: number): number {
 }
 // Una sorpresa debe encajar de sobra con el mood aunque se aleje de tu gusto.
 export const SURPRISE_MIN = .85;
-function eligibleFor(item: Candidate, slug: string, preferences?: Preferences | null) {
+// Margen para tus artistas: si su audio encaja bastante con el mood, entran aunque no lleguen al umbral
+// de una canción desconocida. Una etiqueta contraria explícita sigue excluyendo.
+export const FAVORITE_AUDIO_MIN = .6;
+export function moodFit(item: Candidate, slug: string, preferences?: Preferences | null): number {
   const affinity = moodAffinity(item, slug);
+  if (affinity >= .65 || !item.audio || personalAffinity(item, preferences) < 1) return affinity;
+  if (lyricVeto(item, slug)) return 0; // El margen de favoritos no salta el veto de la letra.
+  if (PROFILES[slug].negative.some(term => hasTag(item.tags || [], term))) return affinity;
+  return audioMatch(item.audio, slug) >= FAVORITE_AUDIO_MIN ? .65 : affinity;
+}
+function eligibleFor(item: Candidate, slug: string, preferences?: Preferences | null) {
+  const affinity = moodFit(item, slug, preferences);
   return affinity >= .65 && (!hasPreferences(preferences) || bucketOf(item, preferences) !== 'discovery' || affinity >= DISCOVERY_MIN);
 }
 // Grupos que aún no llegan a su cupo con las candidatas ya clasificadas.
@@ -230,7 +277,7 @@ export function rankRecommendations(candidates: Candidate[], slug: string, prefe
   const personalized = hasPreferences(preferences);
   const scored = eligible.map(track => {
     const popularity = track.listeners ? Math.log1p(track.listeners) / Math.log1p(maxListeners) : track.familiarity || .1;
-    const affinity = moodAffinity(track, slug);
+    const affinity = moodFit(track, slug, preferences);
     const bucket = bucketOf(track, preferences);
     const nearby = personalized && bucket === 'discovery' ? nearbyGenre(track, preferences) : undefined;
     const taste = bucket === 'discovery' ? tasteSimilarity(track, preferences?.taste) : 0;
@@ -246,8 +293,9 @@ export function rankRecommendations(candidates: Candidate[], slug: string, prefe
       ? .5 * affinity + .35 * fresh + variation : -1;
     const chosenGenre = preferences?.genres.some(genre => genreMatches(genre, trackGenreTags(track)));
     const reason = !personalized ? track.curated ? 'Selección conocida para este mood.' : 'Afinidad de etiquetas y popularidad en Last.fm.'
-      : bucket === 'favorite' ? 'De uno de tus artistas, para este mood.'
+      : bucket === 'favorite' ? (preferences?.spotifyArtists?.some(name => normalize(name) === normalize(track.artist)) ? 'De lo que más escuchas en Spotify, para este mood.' : 'De uno de tus artistas, para este mood.')
       : track.relatedTo ? `Artista similar a ${track.relatedTo}, para este mood.`
+      : track.via && bucket === 'near' ? `Porque escuchas ${track.via}: un artista cercano por descubrir.`
       : chosenGenre ? 'De tus géneros, para este mood.'
       : bucket === 'near' ? `Del mismo estilo que ${styleArtist(track, preferences)}, para este mood.`
       : track.via ? `Porque escuchas ${track.via}: un artista cercano por descubrir.`
@@ -264,7 +312,9 @@ export function rankRecommendations(candidates: Candidate[], slug: string, prefe
     const perArtist = new Map<string, number>();
     const take = (item: typeof scored[number], cap: boolean) => {
       const artist = normalize(item.track.artist);
-      if (chosen.length >= limit || chosen.includes(item) || (cap && (perArtist.get(artist) || 0) >= 3)) return;
+      // Tus artistas pueden llenar su cupo completo; el resto, 2 por artista para que haya variedad.
+      const max = item.bucket === 'favorite' ? Math.max(3, quotas(preferences, limit).favorite) : 2;
+      if (chosen.length >= limit || chosen.includes(item) || (cap && (perArtist.get(artist) || 0) >= max)) return;
       chosen.push(item); perArtist.set(artist, (perArtist.get(artist) || 0) + 1);
     };
     const target = quotas(preferences, limit);

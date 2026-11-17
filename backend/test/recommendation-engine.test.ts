@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { artistGenres, audioMatch, Candidate, novelty, perceivedTempo, tasteSimilarity, tempoMatch, curatedCandidates, moodAffinity, PROFILES, rankRecommendations } from '../src/modules/music/recommendation-engine';
+import { analyzeLyrics, dominantTheme } from '../src/modules/music/lyrics-lexicon';
+import { artistGenres, audioMatch, Candidate, lyricVeto, novelty, perceivedTempo, tasteSimilarity, tempoMatch, curatedCandidates, moodAffinity, PROFILES, rankRecommendations } from '../src/modules/music/recommendation-engine';
 const candidate = (title: string, options: Partial<Candidate> = {}): Candidate => ({ id: title, title, artist: `${title} artist`, externalUrl: 'https://www.last.fm/', tags: ['happy'], listeners: 100, ...options });
 
 test('invitados y cuentas sin cuestionario reciben la misma selección conocida por mood', () => {
@@ -47,7 +48,9 @@ test('el flujo espacia artistas y deduplica títulos aunque cambien acentos o ID
   assert.notEqual(result[2].artist, 'Same');
 });
 test('deduce el género del artista y lo usa como respaldo por debajo de artista y similares', () => {
-  assert.deepEqual(artistGenres([{ name: 'rock', count: 100 }, { name: 'alternative', count: 93 }, { name: 'indie', count: 21 }, { name: 'pop', count: 4 }]), ['rock', 'indie']);
+  // Sólo el género principal, con evidencia fuerte: Karol G (reggaeton/latin/pop) ya no arrastra pop en inglés.
+  assert.deepEqual(artistGenres([{ name: 'rock', count: 100 }, { name: 'alternative', count: 93 }, { name: 'indie', count: 21 }, { name: 'pop', count: 4 }]), ['rock']);
+  assert.deepEqual(artistGenres([{ name: 'pop', count: 30 }]), [], 'evidencia débil: sin estilo');
   assert.deepEqual(artistGenres([{ name: 'Reggaeton', count: 100 }, { name: 'trap', count: 74 }]), ['latin']);
   const preferences = { genres: [], artists: ['Mine'], styleOf: { rock: 'Mine' } };
   const pool = [
@@ -88,9 +91,9 @@ test('las preferencias orientan sin encerrar: cupos de favoritos, cercanos y des
   const result = rankRecommendations(pool, 'feliz', prefs);
   const count = (prefix: string) => result.filter(track => track.title.startsWith(prefix)).length;
   assert.equal(result.length, 7);
-  assert.equal(count('fav'), 3); assert.equal(count('near'), 2);
-  assert.equal(count('folk') + count('jazz'), 2);
-  assert.equal(count('folk'), 2, 'el descubrimiento prefiere un género vecino (rock → folk)');
+  assert.equal(count('fav'), 4, 'más de tus artistas cuando cumplen el mood'); assert.equal(count('near'), 2);
+  assert.equal(count('folk') + count('jazz'), 1);
+  assert.equal(count('folk'), 1, 'el descubrimiento prefiere un género vecino (rock → folk)');
   assert.ok(result.filter(track => track.title.startsWith('folk')).every(track => track.recommendationReason === 'Para descubrir: folk, cerca de lo que escuchas.'));
   assert.ok(!result.some(track => track.title === 'weak'), 'un descubrimiento debe encajar claramente con el mood');
   // Si no hay descubrimientos ni cercanos, tus artistas completan la tanda.
@@ -121,7 +124,8 @@ test('tempo percibido: corrige el doble/mitad del detector y calibra con cancion
   for (const [mood, songs] of Object.entries(references)) for (const [tempo, energy] of songs) assert.equal(tempoMatch(f(tempo, energy), mood), 1, `${mood} ${tempo}/${energy}`);
   // Derezzed (120 BPM, energía .62) queda fuera del pulso triste; Is This It (96) queda justo bajo el alegre.
   assert.ok(tempoMatch(f(120, .62), 'triste') < 1);
-  assert.ok(tempoMatch(f(96, .68), 'feliz') < 1);
+  assert.equal(tempoMatch(f(92, .68), 'feliz'), 1, 'el dembow del reggaetón (~90 BPM) cabe en feliz');
+  assert.ok(tempoMatch(f(80, .68), 'feliz') < 1);
   // Señal suave: el tempo resta, pero nunca descarta por sí solo.
   assert.equal(tempoMatch(f(40, .1), 'feliz'), .6);
 });
@@ -153,4 +157,47 @@ test('la sorpresa ocasional: distinta a tu gusto, muy acorde al mood y no un meg
   const withSurprise = rankRecommendations(pool, 'feliz', { genres: [], artists: ['Mine'], taste, surprise: true });
   const surprise = withSurprise.find(track => track.recommendationReason?.startsWith('Una sorpresa'));
   assert.equal(surprise?.title, 'afro');
+});
+
+test('margen para tus artistas: entran si su audio encaja bastante, nunca con etiqueta contraria', () => {
+  // TQG (Karol G): valence .70, energy .65, dance .84, 90 BPM → audio ≈ .7: no basta para un desconocido.
+  const tqg = { valence: .7, energy: .65, danceability: .84, acousticness: .2, tempo: 90 };
+  const sad = { valence: .1, energy: .3, danceability: .3, acousticness: .5, tempo: 70 };
+  const prefs = { genres: [], artists: ['Karol G'] };
+  const fav = candidate('TQG', { artist: 'Karol G', tags: ['reggaeton'], audio: { ...tqg, valence: .5 } });
+  const stranger = candidate('Otra', { artist: 'Nadie', tags: ['reggaeton'], audio: { ...tqg, valence: .5 } });
+  assert.ok(audioMatch(fav.audio!, 'feliz') >= .6 && audioMatch(fav.audio!, 'feliz') < .8);
+  assert.ok(rankRecommendations([fav], 'feliz', prefs).some(t => t.title === 'TQG'));
+  assert.ok(!rankRecommendations([stranger], 'feliz', prefs).length, 'un desconocido necesita encajar con claridad');
+  assert.ok(!rankRecommendations([candidate('Triste', { artist: 'Karol G', tags: ['reggaeton'], audio: sad })], 'feliz', prefs).length, 'el margen no rescata un tema que no suena al mood');
+  assert.ok(!rankRecommendations([candidate('Neg', { artist: 'Karol G', tags: ['sad'], audio: { ...tqg, valence: .5 } })], 'feliz', prefs).length, 'una etiqueta contraria sigue excluyendo');
+});
+
+// Letras inventadas para las pruebas (no se usan letras reales con derechos de autor).
+const despechoBailable = 'Esta noche salgo a bailar, pa olvidarte de una vez. Me dejaste y ya me olvidé, ' +
+  'otra persona te tiene ahora, no vuelvas a llamar. Bailando en la pista con mi tusa, ' +
+  'sin ti la fiesta sigue, me dejaste pero ya te superé, perreo hasta que salga el sol. ' +
+  'No vuelvas, no te quiero, la tusa se me quita bailando, otra noche más sin ti.';
+const letraAlegre = 'Hoy me siento feliz, la vida brilla y quiero celebrar contigo, una sonrisa en cada esquina, ' +
+  'happy days, sunshine en la ventana, alegría que no se acaba, celebrate, sonríe que hoy es un buen día, ' +
+  'feliz, feliz, todo brilla, good vibes y sonrisa para todos.';
+test('letra: detecta el desamor bailable y lo veta de feliz y romántico, no de motivado', () => {
+  const profile = analyzeLyrics(despechoBailable)!;
+  assert.ok(profile.heartbreak >= .45, `desamor ${profile.heartbreak}`);
+  assert.ok(profile.party > 0);
+  const track = candidate('Despecho', { tags: [], lyrics: profile, audio: { valence: .75, energy: .85, danceability: .85, acousticness: .1, tempo: 96 } });
+  assert.ok(lyricVeto(track, 'feliz') && lyricVeto(track, 'romantico'));
+  assert.ok(!lyricVeto(track, 'motivado'));
+  assert.equal(moodAffinity(track, 'feliz'), 0, 'suena alegre, pero la letra es de desamor');
+  assert.ok(moodAffinity(track, 'motivado') >= .65, 'el desamor movido sí cabe en motivado');
+  // El margen para tus artistas no salta el veto de la letra.
+  assert.equal(rankRecommendations([{ ...track, artist: 'Mine' }], 'feliz', { genres: [], artists: ['Mine'] }).length, 0);
+});
+test('letra: lo alegre se veta de triste; sin letra suficiente no se opina', () => {
+  const happy = analyzeLyrics(letraAlegre)!;
+  assert.equal(dominantTheme(happy), 'joy');
+  assert.ok(lyricVeto(candidate('Alegre', { lyrics: happy }), 'triste'));
+  assert.equal(analyzeLyrics('la la la oh oh'), null);
+  // La letra matiza pero nunca rescata una canción que no suena al mood.
+  assert.equal(moodAffinity(candidate('Lenta', { tags: [], lyrics: happy, audio: { valence: .1, energy: .2, danceability: .2, acousticness: .9 } }), 'feliz'), 0);
 });

@@ -5,12 +5,19 @@ import { artistGenres, Bucket, bucketOf, Candidate, curatedCandidates, hasPrefer
 import { MusicCache } from './music-cache';
 import { MusicProviders } from './music.providers';
 import { RecommendationHistory } from './recommendation-history';
-import { addAudio, audioCentroid, StoredTaste, TasteSignal, TasteStore } from './taste-profile';
+import { SpotifyArtistsStore, TasteSource } from './spotify-artists';
+import { addAudio, audioCentroid, mergeTaste, StoredTaste, TasteSignal, TasteStore } from './taste-profile';
 import { DatabaseService } from '../database/database.module';
 import { RecommendationBatch, Track } from './music.types';
 import { matchingTitle } from './track-matching';
 export { normalizeTrack, Track } from './music.types';
 
+// Etiquetas de Last.fm con catálogo propio para cada género del cuestionario.
+const GENRE_SOURCES: Record<string, string[]> = {
+  latin: ['latin', 'reggaeton', 'latin pop'], 'hip-hop': ['hip-hop', 'rap'], electronic: ['electronic', 'house', 'dance'],
+  'r&b': ['rnb', 'soul'], classical: ['classical', 'piano'], rock: ['rock', 'alternative rock'], indie: ['indie', 'indie pop'],
+  pop: ['pop', 'dance pop'], folk: ['folk', 'acoustic'],
+};
 const identity = (track: Track) => `${normalize(track.artist)}|${matchingTitle(track.title)}`;
 interface Source { kind: 'tag' | 'artist'; name: string; mood?: boolean; genre?: boolean; relatedTo?: string; via?: string; discovery?: boolean; page: number; exhausted: boolean; last: number; signatures?: Set<string>; retryAt?: number }
 interface Session {
@@ -36,6 +43,7 @@ export class MusicService {
   // cambiar de gustos o volver otro día no debe repetir la misma primera tanda.
   private readonly history: RecommendationHistory;
   private readonly taste: TasteStore;
+  private readonly spotify: SpotifyArtistsStore;
   private sessions = new Map<string, Session>();
   // Inyectable en pruebas para obtener un orden determinista.
   random: () => number = Math.random;
@@ -43,6 +51,7 @@ export class MusicService {
     this.providers = new MusicProviders(cache || new MusicCache(database));
     this.history = new RecommendationHistory(database);
     this.taste = new TasteStore(database);
+    this.spotify = new SpotifyArtistsStore(database);
   }
   search(term: string) { return this.providers.search(term); }
   artists(term: string) { return this.providers.artists(term); }
@@ -55,8 +64,18 @@ export class MusicService {
       genres: [...new Set(preferences.genres)].sort(),
       artists: [...new Set(preferences.artists.map(canonicalArtistName).filter(Boolean))].sort(),
     };
+    // Fuente de gustos elegida en la cuenta: lo configurado en la app, lo que escuchas en Spotify o ambos.
+    const { names: spotifyNames, source: tasteSource } = userId !== 'guest' ? await this.spotify.load(userId) : { names: [], source: 'app' as TasteSource };
+    const useSpotify = spotifyNames.length > 0 && tasteSource !== 'app';
+    if (useSpotify && tasteSource === 'spotify') {
+      preferences = { genres: [], artists: [...spotifyNames].sort(), spotifyArtists: [...spotifyNames].sort() };
+    } else if (useSpotify) {
+      const explicit = preferences?.artists || [];
+      const extra = spotifyNames.filter(name => !explicit.some(artist => normalize(artist) === normalize(name)));
+      preferences = { genres: preferences?.genres || [], artists: [...new Set([...explicit, ...extra])].sort(), spotifyArtists: extra.sort() };
+    }
     const historyKey = userId !== 'guest' ? createHash('sha256').update(JSON.stringify(['history', userId, slug])).digest('hex') : undefined;
-    const fingerprint = createHash('sha256').update(JSON.stringify([slug, userId, preferences || null, sessionId])).digest('hex');
+    const fingerprint = createHash('sha256').update(JSON.stringify([slug, userId, preferences || null, sessionId, useSpotify ? tasteSource : 'app'])).digest('hex');
     let session = this.sessions.get(fingerprint);
     if (!session || session.expires < Date.now()) {
       if (page !== 1) throw new BadRequestException('La tanda caducó. Vuelve a comenzar desde la primera.');
@@ -70,8 +89,11 @@ export class MusicService {
       // Se registra antes de esperar el historial para que peticiones simultáneas compartan sesión.
       if (historyKey) created.historyReady = this.history.load(historyKey).then(ids => { for (const id of ids) created.history.add(id); });
       if (userId !== 'guest') {
+        // Lo que escuchas en la app se sigue aprendiendo siempre; para recomendar se usa la fuente elegida.
         created.tasteKey = this.tasteKey(userId);
-        created.tasteReady = this.taste.load(created.tasteKey).then(value => { created.stored = value; });
+        const appTaste = tasteSource === 'spotify' && useSpotify ? Promise.resolve({ artists: {}, tags: {} }) : this.taste.load(created.tasteKey);
+        const spotifyTaste = useSpotify ? this.taste.load(this.spotifyTasteKey(userId)) : Promise.resolve(null);
+        created.tasteReady = Promise.all([appTaste, spotifyTaste]).then(([app, fromSpotify]) => { created.stored = fromSpotify ? mergeTaste(app, fromSpotify) : app; });
       }
       this.sessions.set(fingerprint, session = created);
     }
@@ -95,7 +117,8 @@ export class MusicService {
     const source = (kind: 'tag' | 'artist', name: string, extras = {}): Source => ({ kind, name, page: 1, exhausted: false, last: 0, ...extras });
     const personal = [
       ...(preferences?.artists || []).map(name => source('artist', name)),
-      ...(preferences?.genres || []).map(name => source('tag', name, { genre: true })),
+      // Cada género busca también en sus etiquetas reales de Last.fm (latin → reggaeton, latin pop…).
+      ...(preferences?.genres || []).flatMap(name => (GENRE_SOURCES[name] || [name]).map(tag => source('tag', tag, { genre: true }))),
     ];
     const mood = PROFILES[slug].tags.map(name => source('tag', name, { mood: true }));
     return {
@@ -179,6 +202,26 @@ export class MusicService {
         added++;
       }
     }
+  }
+  // Importación desde Spotify: los artistas más escuchados alimentan el perfil de gusto y los 5
+  // primeros pasan a contar como favoritos. Sólo se guardan nombres y pesos agregados.
+  async importSpotifyTaste(userId: string, artists: Array<{ name: string; weight: number }>) {
+    const top = artists.filter(item => item.name && item.weight > 0).slice(0, 20);
+    const signals = await Promise.all(top.map(async item => ({
+      artist: item.name, tags: await this.providers.artistTags(item.name).catch(() => []), weight: Math.min(1, item.weight),
+    })));
+    // Perfil propio de Spotify (no se mezcla con lo aprendido en la app): se combina al recomendar según la fuente elegida.
+    await this.taste.record(this.spotifyTasteKey(userId), signals);
+    await this.spotify.save(userId, top.slice(0, 5).map(item => item.name));
+  }
+  forgetSpotify(userId: string) { this.spotify.forget(userId); }
+  tasteSource(userId: string) { return this.spotify.load(userId).then(value => value.source); }
+  setTasteSource(userId: string, source: TasteSource) { return this.spotify.setSource(userId, source); }
+  private spotifyTasteKey(userId: string) { return createHash('sha256').update(JSON.stringify(['taste-spotify', userId])).digest('hex'); }
+  // ISRC de una pista de Deezer: identifica la misma grabación en Spotify.
+  async isrcFor(id: string): Promise<string | undefined> {
+    const match = /^deezer:(\d{1,20})$/.exec(id);
+    return match ? (await this.providers.trackById(match[1]).catch(() => null))?.isrc : undefined;
   }
   private tasteKey(userId: string) { return createHash('sha256').update(JSON.stringify(['taste', userId])).digest('hex'); }
   // Aprende de una preview escuchada: artista, etiquetas y sonido. Sólo agregados.
@@ -275,23 +318,30 @@ export class MusicService {
       const wave: Candidate[] = [];
       const counts = new Map<string, number>();
       const add = (track: Candidate, limit: number) => { if (wave.length < limit && !wave.includes(track)) wave.push(track); };
-      // Ola de 12: tus artistas y cercanos primero, pero siempre se reservan turnos para
-      // descubrimientos y, con audio disponible, para temas de tus géneros aún sin clasificar.
-      const genreSlots = !!preferences?.genres.length && !!session.audioWorks;
-      const personalSlots = !personalized ? 12 : genreSlots ? 6 : 9;
+      // Ola de 12 con turnos propios por grupo, para que la tanda tenga de todo:
+      // 5 para tus artistas, 4 para cercanos (similares, a dos pasos, tus géneros) y 3 para descubrir.
+      const personalLevel = (track: Candidate) => personalAffinity(track, effective());
+      const near = (track: Candidate) => { const p = personalLevel(track); return p > 0 && p < 1; };
+      const favoriteSlots = !personalized ? 12 : preferences?.artists.length ? 5 : 0;
       for (const track of candidates) {
-        if (level(track) < top) continue;
+        if (wave.length >= favoriteSlots) break;
+        if (personalized && personalLevel(track) < 1) continue;
+        if (!personalized && level(track) < top) continue;
         const artist = normalize(track.artist);
         if ((counts.get(artist) || 0) >= 3) continue;
-        add(track, personalSlots); counts.set(artist, (counts.get(artist) || 0) + 1);
-        if (wave.length === personalSlots) break;
+        add(track, favoriteSlots); counts.set(artist, (counts.get(artist) || 0) + 1);
       }
-      if (genreSlots) for (const track of candidates) if (!moodAffinity(track, slug) && personalAffinity(track, preferences) > 0) add(track, 9);
-      // Descubrimientos: primero los que llegan desde tus artistas (similares de similares) y los menos
-      // trillados; la popularidad no ordena aquí para no revisar siempre los mismos éxitos.
-      if (personalized) candidates.filter(discoveryCandidate)
-        .sort((a, b) => ((b.via ? .4 : 0) + .4 * moodAffinity(b, slug) + .3 * noise(b)) - ((a.via ? .4 : 0) + .4 * moodAffinity(a, slug) + .3 * noise(a)))
-        .forEach(track => add(track, 12));
+      if (personalized) {
+        // Cercanos: primero los artistas similares y a dos pasos (basta Deezer para clasificarlos);
+        // los temas sólo de género, cuando el audio funciona.
+        const nearOrder = (track: Candidate) => (track.relatedTo ? .5 : track.via ? .45 : 0) + .4 * moodAffinity(track, slug) + .3 * noise(track);
+        const limit = Math.min(12, wave.length + 4);
+        candidates.filter(track => near(track) && (track.relatedTo || track.via || moodAffinity(track, slug) > 0 || session.audioWorks))
+          .sort((x, y) => nearOrder(y) - nearOrder(x)).forEach(track => add(track, limit));
+        // Descubrimientos: los menos trillados; la popularidad no ordena aquí para no revisar siempre los mismos éxitos.
+        candidates.filter(discoveryCandidate).sort((x, y) => (.4 * moodAffinity(y, slug) + .3 * noise(y)) - (.4 * moodAffinity(x, slug) + .3 * noise(x)))
+          .forEach(track => add(track, Math.min(12, wave.length + 3)));
+      }
       // Temas sólo del género (sin evidencia de mood) cuestan dos consultas a Last.fm si no hay audio:
       // se revisan únicamente cuando no queda nada mejor.
       const costly = (track: Candidate) => !session.audioWorks && !moodAffinity(track, slug) && personalAffinity(track, preferences) < .8;
@@ -303,9 +353,11 @@ export class MusicService {
         // Last.fm sólo se consulta cuando falta saber el género (gustos/estilo) o no hay rasgos de audio.
         const needsGenre = personalized && !personalAffinity(track, effective());
         try {
-          let [info] = await Promise.all([needsGenre ? this.providers.info(track) : undefined, this.loadAudio(track)]);
+          // Las etiquetas de Last.fm se piden siempre que no haya evidencia de mood: llevan señales
+          // contrarias ("sad", "sadcore") que el audio no ve, también para tus artistas favoritos.
+          const wantInfo = needsGenre || (!track.moodEvidence?.length && !track.tags?.length);
+          const [info] = await Promise.all([wantInfo ? this.providers.info(track) : undefined, this.loadAudio(track), this.loadLyrics(track)]);
           if (track.audio) session.audioWorks = true;
-          if (!track.audio && !track.moodEvidence?.length && !info) info = await this.providers.info(track);
           if (info) { track.tags = [...new Set([...(track.tags || []), ...info.tags])]; track.listeners = info.listeners || track.listeners; }
           if (!track.audio && moodAffinity(track, slug) < .65) track.tags = [...new Set([...(track.tags || []), ...await this.providers.moodTags(track)])];
           track.metadataChecked = true;
@@ -345,6 +397,12 @@ export class MusicService {
         ? (retry ? 'Seguimos buscando otras 7 recomendaciones. Puedes continuar con la tanda actual.' : 'No encontramos otras 7 coincidencias para este mood y tus gustos. La tanda actual sigue disponible.')
         : (retry ? initial.length ? `Encontramos ${initial.length} de 7 recomendaciones. Puedes reintentar para completar la selección.` : failures ? 'No pudimos completar la consulta al catálogo musical. Reintenta en unos segundos.' : 'Todavía no encontramos coincidencias suficientes para este mood y tus gustos. Puedes reintentar o cambiar de mood.' : 'No hay suficientes coincidencias para completar 7 con este mood y tus gustos. Puedes ajustar tus preferencias o cambiar de mood.'),
     };
+  }
+  // Perfil de la letra. Nunca lanza: sin letra, la clasificación sigue con audio y etiquetas.
+  private async loadLyrics(track: Candidate) {
+    if (track.lyricsChecked) return;
+    try { track.lyrics = await this.providers.lyrics(track); track.lyricsChecked = true; }
+    catch { /* LRCLIB no disponible: se reintenta en otra tanda. */ }
   }
   // Coincidencia en Deezer + rasgos de audio por ISRC. Nunca lanza: sin datos se usan las etiquetas.
   private async loadAudio(track: Candidate) {

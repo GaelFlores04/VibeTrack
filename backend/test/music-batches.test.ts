@@ -455,3 +455,28 @@ test('el perfil de gusto aprende de las previews escuchadas y persiste tras rein
     assert.ok(profile.tags['garage rock'] > 0);
   } finally { globalThis.fetch = previous; if (key === undefined) delete process.env.LASTFM_API_KEY; else process.env.LASTFM_API_KEY = key; }
 });
+
+test('letras: se consultan en LRCLIB y sólo se cachea el perfil, nunca la letra', async () => {
+  const stored = new Map();
+  const collection = { createIndex: async () => 'ok', findOne: async (q: any) => stored.get(q._id), updateOne: async (q: any, v: any) => { stored.set(q._id, v.$set); } };
+  const database = { status: 'connected', db: { collection: () => collection } } as any;
+  const previous = globalThis.fetch;
+  const secret = 'Me dejaste y ya me olvidé, otra persona te tiene, no vuelvas, sin ti bailando, tusa en la pista, ' +
+    'me dejaste otra vez, no vuelvas, no te quiero, ya te superé, sin ti la noche sigue, perreo y adiós, olvidarte bailando.';
+  let calls = 0;
+  globalThis.fetch = (async (input: any) => {
+    const url = new URL(String(input));
+    if (url.hostname !== 'lrclib.net') throw new Error('red no permitida');
+    calls++;
+    return new Response(JSON.stringify({ artistName: 'Artista', trackName: 'Tema', instrumental: false, plainLyrics: secret }));
+  }) as any;
+  try {
+    const providers = (new MusicService(undefined, database) as any).providers;
+    const profile = await providers.lyrics({ artist: 'Artista', title: 'Tema (feat. Otro)' });
+    assert.ok(profile.heartbreak >= .45);
+    await providers.lyrics({ artist: 'Artista', title: 'Tema (feat. Otro)' });
+    assert.equal(calls, 1, 'la segunda vez sale de caché');
+    const cached = JSON.stringify([...stored.values()]);
+    assert.ok(!cached.includes('olvidé') && !cached.includes('olvide') && !cached.includes('tusa'), 'la letra no se guarda');
+  } finally { globalThis.fetch = previous; }
+});

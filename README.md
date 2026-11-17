@@ -54,6 +54,27 @@ Colecciones `users` y `sessions`, relacionadas mediante `sessions.userId`. Email
 
 Las preferencias se guardan en el usuario autenticado. Los DTOs rechazan campos adicionales y no aceptan un ID ajeno para modificar preferencias. Las consultas públicas funcionan sin cuenta. Sin MongoDB las operaciones de cuenta devuelven un error de servicio.
 
+## Diseño: retro 2000s, música y océano
+
+Implementa los criterios D01–D12 de `docs/PLAN_PROYECTO.md`.
+
+- **Escena 3D del reproductor** (`frontend/src/features/player/scene/`): React Three Fiber + three.js, cargada de forma diferida sólo en la página del reproductor (~250 KB gzip). Reproductor ovalado plateado con tapa azul translúcida que se abre al cambiar de CD, pila con la portada real de cada canción y giro sólo mientras el audio suena. Los modelos son procedurales hasta tener los GLB exportados de Spline.
+- **CD-R a rotulador:** una canción sin preview (o cuya portada no carga) aparece como CD-R virgen con su título escrito en Permanent Marker, en la escena y en las miniaturas.
+- **Equivalente accesible (D09):** lista HTML "Sigue en la tanda", barra de controles y pantalla LCD con texto real; nada depende de tocar el 3D.
+- **Rendimiento y respaldo (D10):** espacio reservado, dibujo bajo demanda, resolución reducida si las transiciones bajan de 24 FPS y vista estática si WebGL falla o va lento. Medido: 60 FPS en Intel Iris Xe.
+- **Movimiento reducido (D11):** sin giro y con cambios de disco inmediatos.
+- Fuentes alojadas en el proyecto (`@fontsource`): Saira itálica (marca y títulos), Atkinson Hyperlegible Next (texto), Share Tech Mono (LCD) y Permanent Marker (CD-R).
+- Pendiente: favoritos y calificación (D06) cuando exista su API.
+
+## Navegación y reproductor
+
+- **Minirreproductor** fijo abajo en todas las páginas: portada, anterior / pausa / siguiente, barra de progreso, cola con volumen y "Volver a la tanda" cuando navegas a otra página.
+- **Tandas en la URL** (`?tanda=2`) con sesión por pestaña: F5 y "Atrás" vuelven a la misma tanda; "Tanda anterior" / "Siguiente tanda" recuperan al instante las ya preparadas.
+- Al cambiar de tanda la página sube a la primera canción y le da el foco; si la reproducción avanza sola, la lista acompaña a la canción en curso.
+- Al terminar la cola, el reproductor ofrece seguir con otra tanda y continúa solo.
+- Teclas multimedia y pantalla de bloqueo (Media Session), atajos (Espacio pausa o continúa, Mayús + ← / → cambia de canción) y la canción en el título de la pestaña.
+- Tras recargar, la cola se restaura en pausa en el mismo punto; el volumen se recuerda.
+
 ## Recomendaciones y rendimiento
 
 Cada tanda completa contiene **7 recomendaciones**; el audio no bloquea su presentación. Se mantiene una reserva de candidatas por sesión de descubrimiento; se consultan más fuentes hasta reunir siete coincidencias de mood y preferencias. Las tandas preparadas se reutilizan y las peticiones simultáneas de la misma página se agrupan.
@@ -72,6 +93,7 @@ Las URLs de preview de Deezer van firmadas y caducan en ~15 minutos, así que la
 ### Cómo se decide el mood
 
 - Cada mood define rangos de audio: feliz (valence ≥ 0.6, energy ≥ 0.45, danceability ≥ 0.45), triste (valence ≤ 0.38, energy ≤ 0.5, danceability ≤ 0.68: lo tenso o bailable no es tristeza), cansado (energy ≤ 0.32), relajado, motivado y romántico.
+- **Letra (LRCLIB + diccionario local, sin clave).** Al clasificar una canción se consulta su letra en LRCLIB y se puntúan seis temas (desamor, tristeza, amor, fiesta, alegría, motivación) con un diccionario español/inglés que incluye expresiones del pop urbano ("tusa", "te quedó grande", "otra persona"). Sólo se guarda el perfil numérico, nunca la letra (`LYRICS_ENABLED=false` lo desactiva). Una letra de desamor o tristeza veta la canción en feliz aunque suene alegre; el desamor veta romántico; una letra fiestera o alegre veta triste. El **desamor movido** (p. ej. *Tusa*) sólo cabe en motivado. La letra matiza, pero nunca rescata una canción cuyo audio no encaja. Límite conocido: el diccionario no capta el sarcasmo ni metáforas muy indirectas.
 - **Tempo (BPM) como señal suave.** Se usa el tempo *percibido*: los detectores suelen dar el doble del pulso en canciones lentas (Fix You marca 138 y se siente a 69), así que con energía baja se divide entre dos. Rangos: feliz 100–170, triste 50–100, cansado 45–95, relajado 55–120, romántico 55–115, motivado 80–195. Fuera del rango la afinidad baja hasta un 40 %, pero el tempo nunca descarta una canción por sí solo. También suaviza el orden: se evitan saltos bruscos de pulso entre canciones consecutivas.
 - **Sin etiquetas de ánimo**, una canción entra si su audio encaja con claridad (así "Fix You" cuenta como triste aunque Last.fm no la etiquete).
 - **Con etiquetas**, se promedian etiqueta y audio: una canción etiquetada "happy" que suena triste se descarta.
@@ -213,3 +235,15 @@ los siete días originales. El frontend renueva al entrar y cada diez minutos mi
 Las cookies anteriores firmadas con duración de siete días requieren iniciar sesión de nuevo tras esta migración;
 un refresh con una cookie inválida, revocada o caducada la elimina del navegador.
 `@nestjs/swagger` se retiró: no se usaba y arrastraba `swagger-ui-dist` y la telemetría `@scarf/scarf`.
+
+## Spotify (opcional, Premium)
+
+Las cuentas pueden conectar Spotify desde **Tu cuenta**. Con eso:
+
+- **Canciones completas:** con Premium, el navegador se convierte en un dispositivo "VibeTrack" (Web Playback SDK) y cada canción se busca en Spotify por ISRC (la misma grabación) o, si falla, por título y artista. Lo que no está en Spotify suena con el preview de 30 s.
+- **Recomendaciones más precisas:** se importan tus artistas más escuchados (`/me/top/artists` a medio y corto plazo y lo reciente). Alimentan el perfil de gusto y los 5 primeros cuentan como favoritos ("De lo que más escuchas en Spotify").
+- **Privacidad:** el token de renovación se guarda cifrado (AES-256-GCM) y nunca llega al navegador; sólo se guardan nombres de artistas y pesos agregados. Desconectar borra ambos.
+
+Configuración: crea una app en el [panel de Spotify](https://developer.spotify.com/dashboard), registra el Redirect URI `http://127.0.0.1:5173/api/spotify/callback` y rellena `SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET` y `SPOTIFY_REDIRECT_URI` en `backend/.env`.
+
+Límites de Spotify (2026) para apps en modo desarrollo: el dueño de la app necesita Premium, hay un máximo de 5 usuarios que deben añadirse a mano en *User Management*, y la búsqueda devuelve como mucho 10 resultados. Para abrirlo a cualquiera hace falta solicitar *Extended Quota* a Spotify.

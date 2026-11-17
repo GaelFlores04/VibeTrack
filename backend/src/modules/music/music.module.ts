@@ -50,5 +50,5 @@ export class MusicController {
     return { ...result, tracks: result.tracks.map(publicTrack) };
   }
 }
-@Module({ imports: [AuthModule], controllers: [MusicController], providers: [MusicService, MusicCache] })
+@Module({ imports: [AuthModule], controllers: [MusicController], providers: [MusicService, MusicCache], exports: [MusicService] })
 export class MusicModule {}

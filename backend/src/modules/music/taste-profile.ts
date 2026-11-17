@@ -28,6 +28,16 @@ export function addAudio(sum: AudioSum | undefined, audio: AudioFeatures, weight
     tempo: base.tempo + (audio.tempo ? weight * audio.tempo : 0), tempoN: base.tempoN + (audio.tempo ? weight : 0), n: base.n + weight,
   };
 }
+// Suma dos perfiles (p. ej. el aprendido en la app y el importado de Spotify).
+export function mergeTaste(a: StoredTaste, b: StoredTaste): StoredTaste {
+  const sum = (x: Record<string, number>, y: Record<string, number>) => {
+    const out = { ...x };
+    for (const [key, value] of Object.entries(y)) out[key] = (out[key] || 0) + value;
+    return top(out);
+  };
+  const audio = !a.audio ? b.audio : !b.audio ? a.audio : Object.fromEntries(Object.keys(a.audio).map(key => [key, (a.audio as any)[key] + (b.audio as any)[key]])) as AudioSum;
+  return { artists: sum(a.artists, b.artists), tags: sum(a.tags, b.tags), ...(audio ? { audio } : {}) };
+}
 export function toTaste(stored: StoredTaste): Taste {
   return { tags: stored.tags, artists: stored.artists, audio: audioCentroid(stored.audio) };
 }

@@ -4,6 +4,7 @@ import { MusicCache } from './music-cache';
 import { artistGenres, AudioFeatures, normalize, Candidate } from './recommendation-engine';
 import { findPreviewMatch, matchingTitle } from './track-matching';
 import { normalizeDeezerTrack, normalizeTrack, Suggestion, Track } from './music.types';
+import { analyzeLyrics, LEXICON_VERSION, LyricProfile } from './lyrics-lexicon';
 const HOUR = 3600000;
 const MAX_TAG_PAGES = 30;
 // Más allá de sus ~200 temas más escuchados, un artista sólo aporta rarezas sin etiquetas
@@ -197,6 +198,29 @@ export class MusicProviders {
   async trackById(id: string): Promise<Track | null> {
     const body = await this.deezer(`track/${id}`, {}, 24 * HOUR, true, 'meta:');
     return body ? normalizeDeezerTrack(body) : null;
+  }
+  // Tono de la letra vía LRCLIB (abierta, sin clave). Se analiza al vuelo con el diccionario local
+  // y sólo se cachea el perfil numérico: la letra no se guarda ni se reenvía a nadie.
+  async lyrics(track: Pick<Track, 'title' | 'artist'>): Promise<LyricProfile | null> {
+    if (process.env.LYRICS_ENABLED === 'false') return null;
+    const title = track.title.replace(/\s*[([](?:feat\.?|ft\.?|with|from)\b[^)\]]*[)\]]/gi, '').trim() || track.title;
+    return this.cache.remember(`lrclib:v1:lex${LEXICON_VERSION}:${normalize(track.artist)}|${matchingTitle(title)}`, 30 * 24 * HOUR, async () => {
+      const get = async (path: string, parameters: Record<string, string>) => {
+        const url = new URL(`https://lrclib.net/api/${path}`);
+        url.search = new URLSearchParams(parameters).toString();
+        const response = await fetch(url, { headers: { 'User-Agent': 'VibeTrack (proyecto academico)' }, signal: AbortSignal.timeout(4000) });
+        if (response.status === 404) return null;
+        if (!response.ok) throw new BadGatewayException('No se pudo consultar la letra.');
+        return response.json();
+      };
+      let body: any = await get('get', { artist_name: track.artist, track_name: title });
+      if (!body?.plainLyrics && !body?.instrumental) {
+        const found = await get('search', { artist_name: track.artist, track_name: title });
+        body = Array.isArray(found) ? found.find(item => typeof item?.plainLyrics === 'string' && normalize(item.artistName || '').includes(normalize(track.artist).split(' ')[0])) : null;
+      }
+      if (body?.instrumental || typeof body?.plainLyrics !== 'string') return null;
+      return analyzeLyrics(body.plainLyrics);
+    });
   }
   async similar(artist: string): Promise<string[]> {
     const body = await this.lastfm('artist.getSimilar', { artist, limit: '8' }, 24 * HOUR);
