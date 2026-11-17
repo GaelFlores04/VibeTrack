@@ -10,6 +10,8 @@ import Icon from '../../shared/components/Icon';
 import ActionLink from '../../shared/components/ActionLink';
 import { useReducedMotion } from '../../shared/hooks/useReducedMotion';
 import { useRecommendations } from './useRecommendations';
+import { useSongFeedback } from './useSongFeedback';
+import SongFeedback from './SongFeedback';
 
 const moodNames = { feliz: 'Feliz', relajado: 'Relajado', motivado: 'Motivado', triste: 'Triste', romantico: 'Romántico', cansado: 'Cansado' };
 
@@ -21,6 +23,7 @@ export default function RecommendationsPage() {
 }
 
 function MoodRecommendations({ mood, user }) {
+  const feedback = useSongFeedback(mood, user?.id);
   const [params, setParams] = useSearchParams();
   const initialPage = Math.min(100, Math.max(1, Number.parseInt(params.get('tanda'), 10) || 1));
   const resource = useRecommendations(mood, { owner: user?.id || 'guest', initialPage });
@@ -58,8 +61,11 @@ function MoodRecommendations({ mood, user }) {
 
   useEffect(() => { if (owns && player.track) setSelectedId(player.track.id); }, [owns, player.track?.id]);
   useEffect(() => { if (source && tracks.length) player.syncQueue(source.key, tracks); }, [tracks, source?.key]);
-  // En esta página el reproductor completo sustituye al mini.
-  useEffect(() => { player.setDocked(owns ? source.key : null); return () => player.setDocked(null); }, [owns, source?.key]);
+  // En esta página el reproductor completo sustituye siempre al mini: si suena otra lista, la barra
+  // de la página lo indica (antes ambos se superponían y mostraban canciones distintas).
+  useEffect(() => { player.setDocked('*'); return () => player.setDocked(null); }, []);
+  const elsewhere = !owns && player.track;
+  const elsewherePlaying = elsewhere && ['playing', 'loading'].includes(player.status);
 
   // La tanda visible queda en la URL; al cambiar de tanda se vuelve arriba, a la primera canción.
   useEffect(() => {
@@ -72,6 +78,19 @@ function MoodRecommendations({ mood, user }) {
     }
     shownPage.current = page;
   }, [page]);
+
+  // Al cambiar de tanda dentro de este mood, el reproductor sigue a la tanda visible: si sonaba (o la
+  // cola había terminado) empieza la nueva; si estaba en pausa, queda cargada en pausa. Antes el mini
+  // seguía con la canción anterior mientras el principal mostraba la nueva y no sonaba ninguna.
+  // Va antes del autoplay: si el final de la cola pidió continuar, ese efecto se encarga.
+  useEffect(() => {
+    if (!ready || !source || owns || autoplay.current || !tracks.length) return;
+    if (!player.source?.key?.startsWith(`mood:${mood}:`)) return;
+    const first = tracks.find(player.playable);
+    if (['playing', 'loading', 'ended'].includes(player.status)) {
+      if (first) player.playQueue(tracks, first, source); // sin previews aún: se reintenta al llegar
+    } else player.loadQueue(tracks, first || tracks[0], source);
+  }, [batch, source?.key, owns]);
 
   // Tras "continuar" al final de la cola, la nueva tanda empieza sola en cuanto tenga previews.
   useEffect(() => {
@@ -113,10 +132,6 @@ function MoodRecommendations({ mood, user }) {
   const stageLabel = selected ? `Reproductor con el CD de ${selected.title}, de ${selected.artist}. ${blank ? 'Sin preview.' : playing ? 'Sonando.' : 'Detenido.'} La pila tiene ${Math.max(0, tracks.length - 1)} CDs más.` : 'Reproductor vacío.';
 
   return <div className="rec-page">
-    <nav className="rec-breadcrumb" aria-label="Ubicación">
-      <Link to="/moods"><Icon name="arrow-left" size={16} />Moods</Link>
-      <span aria-hidden="true">/</span><span aria-current="page">{moodName}</span>
-    </nav>
     <div className="rec-head">
       <div>
         <h1>{moodName}</h1>
@@ -132,6 +147,7 @@ function MoodRecommendations({ mood, user }) {
     </div>
 
     {resource.loading && <p role="status" className="rec-status">{batch ? 'Preparando la tanda. Puedes seguir escuchando esta.' : 'Preparando 7 recomendaciones…'}</p>}
+    {resource.notice && <p role="status" className="rec-status rec-notice">{resource.notice}</p>}
     {resource.message && <p role="status" className="rec-status">{resource.message}</p>}
     {resource.error && <p role="alert" className="rec-status">{resource.error}</p>}
 
@@ -152,6 +168,10 @@ function MoodRecommendations({ mood, user }) {
 
       <section className="rec-list" aria-labelledby="list-title">
         <h2 id="list-title">Sigue en la tanda</h2>
+        {user ? <p className="feedback-help">Tus valoraciones afinan las próximas tandas de este mood. Puedes cambiarlas o quitarlas sin interrumpir la música.</p> : <p className="feedback-help"><Link to="/registro">Crea una cuenta</Link> para guardar likes y dislikes por mood.</p>}
+        {feedback.loading && <p role="status">Consultando tus valoraciones…</p>}
+        {feedback.error && <p role="alert">{feedback.error} <button type="button" onClick={feedback.retry} disabled={Object.values(feedback.pending).some(Boolean)}>Consultar valoraciones de nuevo</button></p>}
+        <p className="feedback-message" role="status">{feedback.message}</p>
         <ol ref={list} data-keyboard-group="linear" aria-label="Canciones de la tanda">
           {tracks.map((track, index) => {
             const isSelected = track.id === selected?.id;
@@ -166,6 +186,7 @@ function MoodRecommendations({ mood, user }) {
                 </span>
                 <span className={`track-end lcd-text${noPreview ? ' is-warn' : ''}`}>{noPreview ? 'sin preview' : track.previewStatus === 'loading' ? '…' : formatDuration(track.durationMs) || String(index + 1).padStart(2, '0')}</span>
               </button>
+              {user && <SongFeedback track={track} feedback={feedback} />}
             </li>;
           })}
         </ol>
@@ -174,6 +195,12 @@ function MoodRecommendations({ mood, user }) {
       </section>
 
       {selected && <section className="transport" aria-label="Controles de reproducción">
+        {elsewhere && <div className="transport-elsewhere">
+          <PlaybackDisc track={player.track} size={32} playing={player.status === 'playing'} />
+          <p><span className="visually-hidden">Ahora suena, de otra lista: </span><strong>{player.track.title}</strong> · {player.track.artist}{player.source?.label ? <small> — {player.source.label}</small> : null}</p>
+          <button type="button" className="icon" onClick={player.toggle} aria-label={elsewherePlaying ? 'Pausar lo que suena' : 'Continuar lo que sonaba'}><Icon name={elsewherePlaying ? 'pause' : 'play'} size={18} /></button>
+          {player.source?.path && <Link to={player.source.path}>Volver</Link>}
+        </div>}
         <div className="transport-now">
           <PlaybackDisc track={selected} size={60} playing={playing} />
           <div className="transport-text">

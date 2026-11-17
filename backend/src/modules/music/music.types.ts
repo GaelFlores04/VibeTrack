@@ -1,4 +1,5 @@
 export interface Track {
+  feedbackKey?: string;
   id: string; title: string; artist: string; album?: string; artworkUrl?: string;
   previewUrl?: string; externalUrl: string; genre?: string; durationMs?: number;
   provider?: 'itunes' | 'lastfm' | 'deezer'; lastfmUrl?: string;
@@ -11,6 +12,8 @@ export interface Suggestion { id: string; name: string; kind: 'artist' | 'track'
 export interface RecommendationBatch {
   tracks: Track[]; page: number; size: 7; status: 'ready' | 'retry' | 'exhausted';
   mode: 'personalized' | 'discovery'; nextPage: number | null; message?: string;
+  // Aviso persistente de la tanda (p. ej. el nivel 5 se amplió porque no había canciones para el mood).
+  notice?: string;
   previewsPending?: boolean; retryAfterMs?: number;
 }
 export function normalizeTrack(item: Record<string, any>): Track | null {

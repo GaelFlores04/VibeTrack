@@ -7,6 +7,7 @@ import { AppModule } from './app.module';
 import { ApiExceptionFilter } from './common/api-exception.filter';
 import { serverConfig } from './common/server-config';
 import { serveFrontend } from './common/serve-frontend';
+import { startupError } from './common/startup-error';
 
 async function bootstrap() {
   const config = serverConfig();
@@ -21,9 +22,11 @@ async function bootstrap() {
   app.use('/api/auth', (_req: any, res: any, next: () => void) => { res.setHeader('Cache-Control', 'no-store'); next(); });
   app.use('/api/spotify', (_req: any, res: any, next: () => void) => { res.setHeader('Cache-Control', 'no-store'); next(); });
   app.use('/api/music/recommendations', (_req: any, res: any, next: () => void) => { res.setHeader('Cache-Control', 'private, no-store'); next(); });
+  app.use('/api/music/feedback', (_req: any, res: any, next: () => void) => { res.setHeader('Cache-Control', 'private, no-store'); next(); });
+  app.use('/api/music/taste-rules', (_req: any, res: any, next: () => void) => { res.setHeader('Cache-Control', 'private, no-store'); next(); });
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }));
   app.useGlobalFilters(new ApiExceptionFilter());
   app.enableShutdownHooks();
   await app.listen(config.port, config.host);
 }
-bootstrap().catch(() => { console.error('No se pudo iniciar VibeTrack. Revisa la compilación, FRONTEND_ORIGIN, JWT_SECRET (mínimo 32 caracteres), PORT y MongoDB.'); process.exit(1); });
+bootstrap().catch(error => { console.error(`No se pudo iniciar VibeTrack: ${startupError(error)}`); process.exit(1); });

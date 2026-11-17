@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Body, Controller, Get, Module, Post } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
-import { configureHttp } from '../src/common/http-security';
+import { configureHttp, httpsRedirect } from '../src/common/http-security';
 import { ApiExceptionFilter } from '../src/common/api-exception.filter';
 import { httpRequest } from './http-helper';
 
@@ -31,4 +31,18 @@ test('HTTP: helmet, HSTS según entorno, compresión y límite JSON', async () =
       assert.equal((await request('/sample', 'POST', { text: 'x'.repeat(11000) })).status, 413);
     } finally { await app.close(); }
   }
+});
+
+test('HTTPS: en producción redirige lo que llegó por HTTP al proxy, sin tocar la salud ni el desarrollo', () => {
+  const run = (production: boolean, headers: Record<string, string>, path = '/moods?x=1') => {
+    let redirected: [number, string] | undefined, passed = false;
+    httpsRedirect(production)({ headers, path: path.split('?')[0], originalUrl: path }, { redirect: (code: number, url: string) => { redirected = [code, url]; } }, () => { passed = true; });
+    return redirected || (passed ? 'next' : 'nada');
+  };
+  assert.deepEqual(run(true, { 'x-forwarded-proto': 'http', host: 'vibetrack.onrender.com' }), [308, 'https://vibetrack.onrender.com/moods?x=1']);
+  assert.equal(run(true, { 'x-forwarded-proto': 'https', host: 'vibetrack.onrender.com' }), 'next');
+  assert.equal(run(true, { host: 'vibetrack.onrender.com' }), 'next', 'sin cabecera del proxy (comprobación interna) no se redirige');
+  assert.equal(run(true, { 'x-forwarded-proto': 'http', host: 'vibetrack.onrender.com' }, '/api/health'), 'next');
+  assert.equal(run(false, { 'x-forwarded-proto': 'http', host: 'localhost:3000' }), 'next');
+  assert.equal(run(true, { 'x-forwarded-proto': 'http', host: 'evil.com/@x' }), 'next', 'un Host malformado no se usa para redirigir');
 });

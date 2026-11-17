@@ -1,4 +1,4 @@
-import { artistKey, artistRelevance, isArtistResult } from './artist-names';
+import { artistKey, artistRelevance, isArtistResult, mainArtists } from './artist-names';
 import { BadGatewayException, HttpException, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
 import { MusicCache } from './music-cache';
 import { artistGenres, AudioFeatures, normalize, Candidate } from './recommendation-engine';
@@ -10,6 +10,9 @@ const MAX_TAG_PAGES = 30;
 // Más allá de sus ~200 temas más escuchados, un artista sólo aporta rarezas sin etiquetas
 // de ánimo: recorrerlas agotaba el tiempo antes de llegar a similares o a su género.
 const MAX_ARTIST_PAGES = 4;
+// Consultas simultáneas por proveedor. Deezer ya tiene su propio presupuesto por ventana.
+// LRCLIB (letras) ya no participa en la clasificación; si se usa, limita la carga sostenida.
+const LANE_LIMITS: Record<string, number> = { 'ws.audioscrobbler.com': 6, 'api.deezer.com': 8, 'lrclib.net': 2 };
 const array = (value: any): any[] => Array.isArray(value) ? value : value ? [value] : [];
 const unit = (value: unknown) => typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 1;
 type Waiter = { resolve: (value: AudioFeatures | null) => void; reject: (error: unknown) => void };
@@ -23,13 +26,14 @@ export class MusicProviders {
   private lanes = new Map<string, { active: number; waiters: Array<() => void> }>();
   constructor(private readonly cache: MusicCache) {}
 
-  private async json(url: URL, timeout = 3500) {
+  private async json(url: URL, timeout = 3500, headers?: Record<string, string>, allowMissing = false) {
     // Una preview lenta no ocupa los turnos del catálogo de recomendaciones.
     let lane = this.lanes.get(url.hostname);
     if (!lane) { lane = { active: 0, waiters: [] }; this.lanes.set(url.hostname, lane); }
-    if (lane.active >= 5) await new Promise<void>(resolve => lane!.waiters.push(resolve)); else lane.active++;
+    if (lane.active >= (LANE_LIMITS[url.hostname] ?? 5)) await new Promise<void>(resolve => lane!.waiters.push(resolve)); else lane.active++;
     try {
-      const response = await fetch(url, { signal: AbortSignal.timeout(timeout) });
+      const response = await fetch(url, { signal: AbortSignal.timeout(timeout), headers });
+      if (allowMissing && response.status === 404) return null;
       if (response.status === 429) throw new HttpException('El proveedor pide esperar antes de otra consulta.', 429);
       if (!response.ok) throw new BadGatewayException('El proveedor musical no está disponible.');
       return await response.json();
@@ -102,7 +106,10 @@ export class MusicProviders {
   }
   // Grabación equivalente en Deezer (preview, portada e ISRC). undefined si no hay coincidencia segura.
   async match(track: Pick<Track, 'title' | 'artist'>): Promise<Track | undefined> {
-    return findPreviewMatch(track, await this.deezerSearch(`${track.artist} ${matchingTitle(track.title)}`, 10, 24 * HOUR));
+    const match = findPreviewMatch(track, await this.deezerSearch(`${track.artist} ${matchingTitle(track.title)}`, 10, 24 * HOUR));
+    if (!match || match.isrc) return match;
+    const detailed = await this.trackById(match.id.replace('deezer:', ''));
+    return detailed && findPreviewMatch(track, [detailed]) ? detailed : match;
   }
   async preview(track: Track, exactFallback = false): Promise<Track> {
     const source = (match: Track): Track => ({ ...match, lastfmUrl: track.externalUrl, recommendationReason: track.recommendationReason });
@@ -201,22 +208,23 @@ export class MusicProviders {
   }
   // Tono de la letra vía LRCLIB (abierta, sin clave). Se analiza al vuelo con el diccionario local
   // y sólo se cachea el perfil numérico: la letra no se guarda ni se reenvía a nadie.
-  async lyrics(track: Pick<Track, 'title' | 'artist'>): Promise<LyricProfile | null> {
+  // quick: sólo la consulta exacta (sin búsqueda de respaldo), para opinar sin frenar la tanda.
+  async lyrics(track: Pick<Track, 'title' | 'artist'>, quick = false): Promise<LyricProfile | null> {
     if (process.env.LYRICS_ENABLED === 'false') return null;
     const title = track.title.replace(/\s*[([](?:feat\.?|ft\.?|with|from)\b[^)\]]*[)\]]/gi, '').trim() || track.title;
-    return this.cache.remember(`lrclib:v1:lex${LEXICON_VERSION}:${normalize(track.artist)}|${matchingTitle(title)}`, 30 * 24 * HOUR, async () => {
+    return this.cache.remember(`lrclib:v2${quick ? 'q' : ''}:lex${LEXICON_VERSION}:${normalize(track.artist)}|${matchingTitle(title)}`, 30 * 24 * HOUR, async () => {
       const get = async (path: string, parameters: Record<string, string>) => {
         const url = new URL(`https://lrclib.net/api/${path}`);
         url.search = new URLSearchParams(parameters).toString();
-        const response = await fetch(url, { headers: { 'User-Agent': 'VibeTrack (proyecto academico)' }, signal: AbortSignal.timeout(4000) });
-        if (response.status === 404) return null;
-        if (!response.ok) throw new BadGatewayException('No se pudo consultar la letra.');
-        return response.json();
+        return this.json(url, 4000, { 'User-Agent': 'VibeTrack (proyecto academico)' }, true);
       };
+      const matches = (item: any) => typeof item?.artistName === 'string' && typeof item?.trackName === 'string'
+        && !!findPreviewMatch(track, [{ id: 'lyrics', artist: item.artistName, title: item.trackName, externalUrl: 'https://lrclib.net' }]);
       let body: any = await get('get', { artist_name: track.artist, track_name: title });
-      if (!body?.plainLyrics && !body?.instrumental) {
+      if (!matches(body)) body = null;
+      if (!quick && !body?.plainLyrics && !body?.instrumental) {
         const found = await get('search', { artist_name: track.artist, track_name: title });
-        body = Array.isArray(found) ? found.find(item => typeof item?.plainLyrics === 'string' && normalize(item.artistName || '').includes(normalize(track.artist).split(' ')[0])) : null;
+        body = Array.isArray(found) ? found.find(item => matches(item) && (item.instrumental || typeof item.plainLyrics === 'string')) : null;
       }
       if (body?.instrumental || typeof body?.plainLyrics !== 'string') return null;
       return analyzeLyrics(body.plainLyrics);
@@ -227,13 +235,21 @@ export class MusicProviders {
     return array(body.similarartists?.artist).filter(item => isArtistResult(item.name) && Number(item.match) >= .25).map(item => item.name).slice(0, 8);
   }
   async artists(term: string): Promise<Suggestion[]> {
+    const tier = (relevance: number) => relevance === 4 ? 2 : relevance >= 2 ? 1 : 0;
     const query = term.trim();
     const body = await this.lastfm('artist.search', { artist: query.toLowerCase(), limit: '40' }, 30 * 60000);
-    const ranked = array(body.results?.artistmatches?.artist)
+    const found = array(body.results?.artistmatches?.artist)
       .filter(item => isArtistResult(item.name))
-      .map(item => ({ ...item, name: item.name.trim(), relevance: artistRelevance(item.name, query), listeners: Math.max(0, Number(item.listeners) || 0) }))
+      .map(item => ({ ...item, name: item.name.trim(), listeners: Math.max(0, Number(item.listeners) || 0) }));
+    // Sólo artistas o bandas principales: una colaboración o variante sesgaría el gusto hacia un
+    // catálogo pequeño (p. ej. "Daft Punk & Pharrell Williams" en lugar de Daft Punk).
+    const main = mainArtists(found).map(item => found.includes(item) ? item : { ...item, mbid: '', url: undefined });
+    const ranked = main
+      .map(item => ({ ...item, relevance: artistRelevance(item.name, query) }))
       .filter(item => item.relevance > 0)
-      .sort((a, b) => b.relevance - a.relevance || b.listeners - a.listeners || a.name.localeCompare(b.name));
+      // Exacta primero; empezar por el término o contenerlo como palabra pesan igual y decide la
+      // popularidad (al buscar "simon", Paul Simon antes que un "Simon …" poco escuchado).
+      .sort((a, b) => tier(b.relevance) - tier(a.relevance) || b.listeners - a.listeners || a.name.localeCompare(b.name));
     const unique = new Map<string, Suggestion>();
     for (const item of ranked) {
       const key = artistKey(item.name);

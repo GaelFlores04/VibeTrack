@@ -1,6 +1,8 @@
 // Iconos de trazo único (24×24, 2 px), dibujados para VibeTrack. Siempre decorativos:
 // el nombre accesible lo lleva el botón que los contiene.
 const paths = {
+  like: <path d="M7 10v11H3V10h4Zm0 0 5-7c2 0 3 1 2 4l-1 3h6a2 2 0 0 1 2 2l-2 7a2 2 0 0 1-2 2H7" />,
+  dislike: <path d="M7 14V3H3v11h4Zm0 0 5 7c2 0 3-1 2-4l-1-3h6a2 2 0 0 0 2-2l-2-7a2 2 0 0 0-2-2H7" />,
   home: <><path d="m3 10 9-7 9 7v9a2 2 0 0 1-2 2h-4v-7H9v7H5a2 2 0 0 1-2-2v-9Z" /></>,
   'arrow-right': <><path d="M4 12h16M14 6l6 6-6 6" /></>,
   'arrow-left': <><path d="M20 12H4M10 6l-6 6 6 6" /></>,

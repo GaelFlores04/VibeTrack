@@ -305,8 +305,10 @@ Píldoras tranquilas que se hunden al pulsar.
 - **Error:** texto `danger` en `role=alert`.
 
 ### Navigation
-- **Escritorio:** marca a la izquierda; enlaces en `ink-soft`, hover `ink`, activo `ink` con subrayado inferior de 2px `sky`. Encabezado separado por una línea `line`.
-- **Móvil:** barra inferior fija de 64px, fondo abisal .96, cuatro columnas icono sobre texto (.78rem); el activo pinta texto `ink` e icono `sky`.
+- **Escritorio:** marca a la izquierda; enlaces píldora con icono de 18px (`ink-faint`) y texto `ink-soft`; hover `ink` con icono `sky-strong`; activo `ink` sobre celeste .1 con icono `sky`. Un único subrayado de 2px `sky` se asienta sobre la línea del encabezado y se desliza hasta la sección activa (380ms, `--ease-out`; sin deslizamiento en la primera pintura ni con movimiento reducido). Es el único movimiento de la navegación. Preferencias marca la pestaña Cuenta y una tanda marca Moods.
+- **Móvil:** barra inferior fija de 64px, fondo abisal .98, cuatro columnas icono sobre texto (.76rem); el activo pinta texto `ink` en negrita, icono `sky` y una píldora celeste .16 de 56×30px tras el icono que crece desde el centro (280ms). La lupa del encabezado se oculta en Explorar.
+- **Pulsación:** los enlaces de navegación y el retorno se hunden a .96–.97 al pulsar (160ms); no con teclado ni movimiento reducido.
+- **Retorno ("Volver a …"):** enlace real sobre el h1 de cada página salvo Inicio, en `ink-soft` con el destino en `ink` negrita y flecha `sky` que retrocede 3px al apuntar. Nombra a dónde lleva: la página anterior del recorrido en la pestaña (conserva `?tanda=N`) o, al entrar directo, su padre lógico (tanda → Moods, Preferencias → Tu cuenta, el resto → Inicio). Iniciar sesión y Registro nunca son destino. Sustituye a la miga de pan de recomendaciones.
 
 ### Track Row (lista de la tanda)
 Fila-botón de 60px con miniatura de CD de 44px, título en negrita y metadatos en una línea con elipsis, duración LCD o "sin preview" en `warn` al final. Transparente en reposo; hover con borde `line-strong`; seleccionada con borde celeste .6 y fondo celeste .14. Es el equivalente HTML completo de tocar la pila en 3D.

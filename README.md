@@ -64,7 +64,7 @@ Implementa los criterios D01–D12 de `docs/PLAN_PROYECTO.md`.
 - **Rendimiento y respaldo (D10):** espacio reservado, dibujo bajo demanda, resolución reducida si las transiciones bajan de 24 FPS y vista estática si WebGL falla o va lento. Medido: 60 FPS en Intel Iris Xe.
 - **Movimiento reducido (D11):** sin giro y con cambios de disco inmediatos.
 - Fuentes alojadas en el proyecto (`@fontsource`): Saira itálica (marca y títulos), Atkinson Hyperlegible Next (texto), Share Tech Mono (LCD) y Permanent Marker (CD-R).
-- Pendiente: favoritos y calificación (D06) cuando exista su API.
+- Valoraciones por mood disponibles mediante la API de feedback y el historial de preferencias.
 
 ## Navegación y reproductor
 
@@ -92,25 +92,26 @@ Las URLs de preview de Deezer van firmadas y caducan en ~15 minutos, así que la
 
 ### Cómo se decide el mood
 
-- Cada mood define rangos de audio: feliz (valence ≥ 0.6, energy ≥ 0.45, danceability ≥ 0.45), triste (valence ≤ 0.38, energy ≤ 0.5, danceability ≤ 0.68: lo tenso o bailable no es tristeza), cansado (energy ≤ 0.32), relajado, motivado y romántico.
-- **Letra (LRCLIB + diccionario local, sin clave).** Al clasificar una canción se consulta su letra en LRCLIB y se puntúan seis temas (desamor, tristeza, amor, fiesta, alegría, motivación) con un diccionario español/inglés que incluye expresiones del pop urbano ("tusa", "te quedó grande", "otra persona"). Sólo se guarda el perfil numérico, nunca la letra (`LYRICS_ENABLED=false` lo desactiva). Una letra de desamor o tristeza veta la canción en feliz aunque suene alegre; el desamor veta romántico; una letra fiestera o alegre veta triste. El **desamor movido** (p. ej. *Tusa*) sólo cabe en motivado. La letra matiza, pero nunca rescata una canción cuyo audio no encaja. Límite conocido: el diccionario no capta el sarcasmo ni metáforas muy indirectas.
-- **Tempo (BPM) como señal suave.** Se usa el tempo *percibido*: los detectores suelen dar el doble del pulso en canciones lentas (Fix You marca 138 y se siente a 69), así que con energía baja se divide entre dos. Rangos: feliz 100–170, triste 50–100, cansado 45–95, relajado 55–120, romántico 55–115, motivado 80–195. Fuera del rango la afinidad baja hasta un 40 %, pero el tempo nunca descarta una canción por sí solo. También suaviza el orden: se evitan saltos bruscos de pulso entre canciones consecutivas.
-- **Sin etiquetas de ánimo**, una canción entra si su audio encaja con claridad (así "Fix You" cuenta como triste aunque Last.fm no la etiquete).
-- **Con etiquetas**, se promedian etiqueta y audio: una canción etiquetada "happy" que suena triste se descarta.
-- Una etiqueta contraria explícita (p. ej. `sad` para feliz) sigue excluyendo. Sin rasgos de audio (ReccoBeats caído o sin datos) se usan sólo las etiquetas de Last.fm, como antes.
-- Al clasificar una candidata se obtiene su coincidencia en Deezer; esa misma coincidencia aporta el preview, sin una segunda búsqueda.
+El motor separa **compatibilidad emocional**, **preferencias** y **diversidad**. La investigación, el análisis del historial y los resultados reproducibles están en [INVESTIGACION_MOODS.md](docs/INVESTIGACION_MOODS.md).
+
+- `mood-classifier.ts` reúne los perfiles y devuelve evidencia y motivos de decisión. Sus puntuaciones son heurísticas, no probabilidades entrenadas.
+- Feliz, triste y romántico requieren contexto propio de la canción además de audio compatible, cuando existe. Valencia alta no prueba alegría; valencia baja no distingue tristeza de tensión. Géneros y fuentes de búsqueda no certifican emociones.
+- Relajado, cansado y motivado pueden clasificarse con audio si el ajuste es fuerte. El tempo es una señal suave, con una aproximación al pulso percibido.
+- LRCLIB se empareja por título y artista. El léxico español/inglés evalúa ocho temas, contradicciones y algunas negaciones. Se guarda sólo el perfil numérico; no entiende todo sarcasmo, metáfora o contexto cultural. `LYRICS_ENABLED=false` desactiva esta señal.
+- Ni favoritos ni curación eluden contradicciones. Un error temporal de letras deja la canción pendiente de reintento; ausencia confirmada permite recurrir a etiquetas emocionales directas. ReccoBeats sigue siendo opcional.
+- Se deduplica también por ID resuelto e ISRC. La coincidencia Deezer obtenida para clasificar se reutiliza para el preview.
 
 ### Personalización
 
 - **Invitados/sin cuestionario:** selección editorial conocida y listas del mood, ponderando afinidad y popularidad.
-- **Con preferencias, que orientan pero no encierran.** Cada tanda de 7 se arma por cupos: **3 de tus artistas**, **2 cercanas** (artistas similares, tus géneros o el estilo de tus artistas) y **2 descubrimientos** fuera de tus gustos que encajen claramente con el mood (afinidad ≥ 0.8), con preferencia por géneros vecinos (rock → indie/folk/metal, hip-hop → R&B/electrónica…). Sin artistas elegidos: 5 de tus géneros y 2 descubrimientos. Si un grupo no alcanza, completan primero tus artistas y los cercanos; los descubrimientos llegan a 3 como máximo salvo que no haya nada más. Cada canción indica su motivo ("De uno de tus artistas", "Artista similar a…", "Para descubrir: folk, cerca de lo que escuchas").
-- Con géneros elegidos y audio disponible, la mitad de cada ronda de verificación revisa temas del propio género (una consulta a Deezer basta para saber si suenan al mood).
+- **Nivel 3, Equilibrado (predeterminado).** Cada tanda de 7 se arma por cupos: **4 de tus artistas**, **2 cercanas** (artistas similares, tus géneros o el estilo de tus artistas) y **1 descubrimiento** fuera de tus gustos que encajen claramente con el mood (afinidad ≥ 0.8), con preferencia por géneros vecinos (rock → indie/folk/metal, hip-hop → R&B/electrónica…). Sin artistas elegidos: 5 de tus géneros y 2 descubrimientos. Si un grupo no alcanza, completan primero tus artistas y los cercanos; los descubrimientos llegan a 3 como máximo salvo que no haya nada más. Cada canción indica su motivo ("De uno de tus artistas", "Artista similar a…", "Para descubrir: folk, cerca de lo que escuchas").
+- La búsqueda reparte esfuerzo entre tus artistas, cercanos y fuentes del mood. Si un catálogo aporta pocas coincidencias tras revisarlo, reduce su turno para buscar más alternativas, sin relajar la compatibilidad.
 - **Descubrimientos con criterio.** Salen de dos fuentes: las listas del mood y **artistas a dos pasos** de los tuyos (similares de tus similares; p. ej. The Strokes → Little Joy o CRX). Se puntúan por afinidad con tu gusto (35 %), encaje con el mood (30 %) y **popularidad intermedia** (25 %): se prefieren temas entre ~30 mil y ~800 mil oyentes en Last.fm, y un mega-éxito (más de ~2 M) apenas suma. Los temas de tus géneros también ponderan esa novedad a medias; los de tus artistas favoritos, no.
 - **Sorpresa ocasional.** En ~1 de cada 3 tandas uno de los descubrimientos es deliberadamente distinto a tu gusto, pero encaja de sobra con el mood (afinidad ≥ 0.85) y no es un mega-éxito.
 - **Perfil de gusto (`taste_profiles`).** Por cuenta, en MongoDB (memoria si no hay base), con TTL de 180 días. Combina las etiquetas de tus artistas, tus géneros y lo que aprende de las previews que escuchas (`POST /api/music/plays`): peso por artista, peso por etiqueta y el promedio de sonido (valence, energy, danceability, acousticness, tempo). Las señales antiguas pierden peso poco a poco. **Sólo guarda agregados**, nunca qué escuchaste ni cuándo.
 - El historial de canciones mostradas se guarda por cuenta y mood durante 7 días (`recommendation_history`, con TTL). Cambiar de gustos no reinicia el historial; si ya se mostró todo lo compatible, el ciclo vuelve a empezar.
 
-Si no se encuentran siete coincidencias, la respuesta indica `retry` o `exhausted`. La interfaz conserva la tanda completa anterior si existe; en la primera carga muestra las coincidencias disponibles y un mensaje específico. No se rellena con canciones ajenas a los gustos ni se sustituye una tanda de siete por otra de dos. Algunas combinaciones (p. ej. un pianista clásico con el mood motivado) no tienen siete canciones reales.
+Si no se encuentran siete coincidencias, la respuesta indica `retry` o `exhausted`. La interfaz conserva la tanda completa anterior si existe; en la primera carga muestra las coincidencias disponibles y un mensaje específico. No se rellena con canciones de compatibilidad dudosa ni se sustituye una tanda de siete por otra de dos. Algunas combinaciones (p. ej. un pianista clásico con el mood motivado) no tienen siete canciones reales.
 
 ### Caché y límites
 
@@ -133,6 +134,11 @@ Deezer se limita a 40 consultas cada 5 s por proceso (su cuota pública es 50); 
 | GET | /api/music/search?q=Daft%20Punk | Búsqueda pública |
 | GET | /api/music/preview/3106505 | Redirige a la URL vigente del preview de Deezer |
 | POST | /api/music/plays | `{ id: "deezer:3106505" }`; requiere sesión. Afina el perfil de gusto (sólo agregados) |
+| GET | /api/music/genres | Catálogo de 16 familias y 64 subgéneros |
+| GET | /api/music/feedback/feliz | Votos vigentes por canción; requiere sesión |
+| POST | /api/music/feedback | `{ trackId, mood, rating: "like" / "dislike" / null }`; requiere sesión y una canción de una tanda propia |
+| GET | /api/music/feedback/feliz/history | Historial de valoraciones del mood, incluso tras reiniciar el servidor; requiere sesión |
+| DELETE | /api/music/feedback/feliz/:key | Quita una valoración propia guardada; requiere sesión |
 | GET | /api/music/recommendations/feliz?session=UUID&page=1 | Tanda de 7; objeto con tracks, status, page, nextPage, mode y previewsPending |
 | GET | /api/music/artists?q=d | Sugerencias de artistas desde una letra |
 | GET | /api/music/suggestions?q=d | Sugerencias de canciones y artistas desde una letra |
@@ -141,10 +147,12 @@ Deezer se limita a 40 consultas cada 5 s por proceso (su cuota pública es 50); 
 | GET | /api/auth/me | Cuenta actual; sin sesión válida, respuesta vacía |
 | POST | /api/auth/logout | Revoca sesión y elimina cookie |
 | POST | /api/auth/logout-all | Requiere sesión; revoca todas las sesiones de la cuenta |
-| PUT | /api/auth/preferences | `{ genres: [], artists: [] }`; requiere sesión |
-| DELETE | /api/auth/preferences | Borra respuestas y vuelve a selección inicial |
+| PUT | /api/auth/preferences | `{ genres: [], artists: [], preferenceLevel: 3 }`; requiere sesión |
+| DELETE | /api/auth/preferences | Borra el cuestionario; conserva likes y dislikes |
 
-Hasta seis géneros admitidos y cinco artistas. Contraseña: diez a 128 caracteres. Registro y login limitados a cinco peticiones por minuto e IP, además del límite general de API.
+Hasta doce géneros/subgéneros y cinco artistas. Contraseña: diez a 128 caracteres. Registro y login limitados a cinco peticiones por minuto e IP, además del límite general de API.
+
+Las valoraciones afinan las próximas tandas por mood sin modificar la selección ni el audio actuales. Un dislike evita esa canción, sin vetar a su artista ni al género; los likes concretos prevalecen sobre las generalizaciones. En Preferencias puedes buscar y quitar valoraciones anteriores. Consulta [las reglas de aprendizaje y persistencia](docs/APRENDIZAJE_GUSTOS.md).
 
 ## Validación
 
@@ -242,12 +250,16 @@ Las cookies anteriores firmadas con duración de siete días requieren iniciar s
 un refresh con una cookie inválida, revocada o caducada la elimina del navegador.
 `@nestjs/swagger` se retiró: no se usaba y arrastraba `swagger-ui-dist` y la telemetría `@scarf/scarf`.
 
+## Preferencias detalladas
+
+Cinco niveles de exploración, desde «Sorpréndeme» hasta un modo estricto que sólo permite tus preferencias. Las valoraciones de compatibilidad con el mood están separadas de los gustos por canción/artista; puedes favorecer, reducir o excluir canciones, artistas y géneros desde Preferencias. Reglas, límites y pasos de prueba: [PREFERENCIAS_DETALLADAS.md](docs/PREFERENCIAS_DETALLADAS.md).
+
 ## Spotify (opcional, Premium)
 
 Las cuentas pueden conectar Spotify desde **Tu cuenta**. Con eso:
 
 - **Canciones completas:** con Premium, el navegador se convierte en un dispositivo "VibeTrack" (Web Playback SDK) y cada canción se busca en Spotify por ISRC (la misma grabación) o, si falla, por título y artista. Lo que no está en Spotify suena con el preview de 30 s.
-- **Recomendaciones más precisas:** se importan tus artistas más escuchados (`/me/top/artists` a medio y corto plazo y lo reciente). Alimentan el perfil de gusto y los 5 primeros cuentan como favoritos ("De lo que más escuchas en Spotify").
+- **Perfil más detallado:** importa muestras de artistas y canciones principales de tres plazos, artistas seguidos, canciones guardadas y escuchas recientes. Muestra cantidades, límites y permisos pendientes por fuente. Las cuentas vinculadas previamente deben actualizar permisos desde Cuenta → Vinculaciones.
 - **Privacidad:** el token de renovación se guarda cifrado (AES-256-GCM) y nunca llega al navegador; sólo se guardan nombres de artistas y pesos agregados. Desconectar borra ambos.
 
 Configuración: crea una app en el [panel de Spotify](https://developer.spotify.com/dashboard), registra el Redirect URI `http://127.0.0.1:5173/api/spotify/callback` y rellena `SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET` y `SPOTIFY_REDIRECT_URI` en `backend/.env`.

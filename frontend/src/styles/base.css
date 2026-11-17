@@ -78,7 +78,7 @@ button:disabled { cursor: default; opacity: .5; }
 button.primary { background: var(--sky); border-color: var(--sky); color: var(--deep); font-weight: 700; }
 button.primary:hover:not(:disabled) { background: var(--sky-strong); border-color: var(--sky-strong); }
 button.icon { width: 44px; padding: 0; }
-input:not([type=range]):not([type=checkbox]), select, textarea { min-height: 44px; padding: .6rem .85rem; border-radius: 12px; border: 1px solid var(--line-strong); background: rgba(4, 18, 42, .6); color: var(--ink); }
+input:not([type=range]):not([type=checkbox]):not([type=radio]), select, textarea { min-height: 44px; padding: .6rem .85rem; border-radius: 12px; border: 1px solid var(--line-strong); background: rgba(4, 18, 42, .6); color: var(--ink); }
 input::placeholder { color: var(--ink-faint); opacity: 1; }
 input[type=range] { accent-color: var(--sky); height: 44px; margin: 0; cursor: pointer; }
 input[type=checkbox] { accent-color: var(--sky); width: 18px; height: 18px; }
@@ -92,7 +92,7 @@ label { display: block; margin-bottom: .4rem; color: var(--ink-soft); }
 
 /* Formularios de cuenta. */
 .account-form { max-width: 560px; display: grid; gap: 1rem; padding: clamp(18px, 3vw, 28px); border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--panel); }
-.account-form label:not(.check-option) input { display: block; width: 100%; margin-top: .4rem; }
+.account-form label:not(.check-option) input:not([type=radio]) { display: block; width: 100%; margin-top: .4rem; }
 .account-form fieldset { border: 1px solid var(--line); border-radius: var(--radius); padding: 1rem; }
 .account-form legend { padding: 0 .4rem; color: var(--ink); }
 .check-option { display: inline-flex; align-items: center; gap: .45rem; margin: .25rem 1rem .25rem 0; color: var(--ink); }
@@ -304,3 +304,24 @@ input[type=range]:focus-visible { outline: 2px solid var(--sky); outline-offset:
 .taste-source input { margin-top: .25rem; accent-color: var(--sky); }
 .taste-source span { display: grid; gap: .15rem; }
 .taste-source small { color: var(--ink-soft); }
+
+/* Versión de la app: discreta, en la esquina inferior derecha; no intercepta clics y queda bajo el reproductor. */
+.app-version {
+  position: fixed; right: 10px; bottom: calc(6px + env(safe-area-inset-bottom, 0px)); z-index: 5; margin: 0;
+  padding: .1rem .45rem; border-radius: 6px; border: 1px solid var(--line);
+  background: rgba(4, 18, 42, .6); color: var(--ink-faint);
+  font-family: var(--font-lcd); font-size: .7rem; letter-spacing: .04em; line-height: 1.4;
+  pointer-events: none; user-select: none;
+}
+@media (max-width: 720px) { .app-version { bottom: calc(70px + env(safe-area-inset-bottom, 0px)); } }
+/* Cuestionario de VibeTrack: contenedor sin marco; atenuado cuando la fuente es sólo Spotify. */
+.account-form fieldset.questionnaire { border: 0; padding: 0; margin: 0; min-width: 0; display: grid; gap: inherit; }
+.account-form fieldset.questionnaire:disabled { opacity: .55; }
+.form-note { margin: 0; padding: .7rem .9rem; border-radius: var(--radius); border: 1px solid var(--line-strong); background: var(--panel); color: var(--ink-soft); }
+.preference-level .level-warning { color: var(--warn); }
+/* Lo que suena desde otra lista, dentro de la barra de la página (sustituye al minirreproductor). */
+.transport-elsewhere { grid-column: 1 / -1; display: flex; align-items: center; gap: .6rem; padding-bottom: .6rem; border-bottom: 1px solid var(--line); color: var(--ink-soft); font-size: .9rem; min-width: 0; }
+.transport-elsewhere p { margin: 0; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.transport-elsewhere strong { color: var(--ink); }
+.transport-elsewhere .icon { width: 34px; height: 34px; }
+.rec-notice { color: var(--warn); }

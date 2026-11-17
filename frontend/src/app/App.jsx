@@ -8,6 +8,7 @@ import { pageLoaders } from './pageLoaders';
 import ActionLink from '../shared/components/ActionLink';
 import Icon from '../shared/components/Icon';
 import { installKeyboardNavigation } from '../shared/keyboardNavigation';
+import { PageBack, TrailProvider } from './navigationTrail';
 
 const Home = lazy(pageLoaders['/']);
 const Explore = lazy(pageLoaders['/explorar']);
@@ -17,6 +18,9 @@ const Status = lazy(pageLoaders['/estado']);
 const Auth = lazy(pageLoaders['/login']);
 const Preferences = lazy(pageLoaders['/preferencias']);
 const Account = lazy(pageLoaders['/cuenta']);
+// Inyectada por Vite desde package.json; fuera de Vite (pruebas) no se muestra.
+// eslint-disable-next-line no-undef
+const APP_VERSION = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '';
 
 const PAGE_TITLES = {
   '/': 'Inicio', '/moods': 'Moods', '/explorar': 'Explorar', '/estado': 'Estado',
@@ -51,10 +55,12 @@ export default function App() {
   useEffect(() => installKeyboardNavigation(document), []);
 
   return (
-    <>
+    <TrailProvider>
       <a className="skip" href="#content">Saltar al contenido</a>
+      {APP_VERSION && <p className="app-version lcd-text" aria-label={`Versión ${APP_VERSION}`}>v{APP_VERSION}</p>}
       <SiteNavigation />
       <main id="content" tabIndex={-1}>
+        <PageBack />
         <Suspense fallback={<div className="page-loading" role="status"><Icon name="disc" size={28} /><p>Preparando tu espacio…</p></div>}>
           <PageTransition pageKey={pathname}>
             <Routes>
@@ -93,6 +99,6 @@ export default function App() {
           </dl>
         </details>
       </footer>
-    </>
+    </TrailProvider>
   );
 }

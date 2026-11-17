@@ -28,8 +28,8 @@ test('las preferencias cambian el orden pero nunca rescatan temas contrarios al 
 });
 test('sólo las fuentes específicas del mood aportan evidencia, no un género arbitrario', () => {
   assert.equal(moodAffinity(candidate('uncertain', { tags: [], moodEvidence: ['rock'] }), 'feliz'), 0);
-  assert.ok(moodAffinity(candidate('corroborated', { tags: [], moodEvidence: ['happy', 'feel good'] }), 'feliz') >= .79);
-  assert.equal(moodAffinity(candidate('duplicate source', { tags: [], moodEvidence: ['happy', 'happy'] }), 'feliz'), .75);
+  assert.equal(moodAffinity(candidate('corroborated', { tags: [], moodEvidence: ['happy', 'feel good'] }), 'feliz'), 0);
+  assert.equal(moodAffinity(candidate('duplicate source', { tags: [], moodEvidence: ['happy', 'happy'] }), 'feliz'), 0);
 });
 test('distingue descanso, relajación, tristeza y romance con exclusiones por mood', () => {
   assert.equal(moodAffinity(candidate('party', { tags: ['workout', 'energetic'] }), 'cansado'), 0);
@@ -65,12 +65,12 @@ test('deduce el género del artista y lo usa como respaldo por debajo de artista
   const plain = rankRecommendations(pool, 'feliz', { genres: [], artists: ['Mine'] });
   assert.equal(plain.find(track => track.title === 'style')?.recommendationReason, 'Para descubrir: encaja muy bien con este mood.', 'sin estilo conocido pasa a ser descubrimiento');
 });
-test('los rasgos de audio clasifican temas sin etiquetas y corrigen etiquetas contradictorias', () => {
+test('el audio corrobora la emoción y descarta etiquetas contradictorias', () => {
   const sadSound = { valence: .12, energy: .42, danceability: .2, acousticness: .2 };
   const happySound = { valence: .96, energy: .76, danceability: .66, acousticness: .3 };
-  // "Fix You": sin etiqueta de tristeza en Last.fm, pero suena triste.
-  assert.ok(moodAffinity(candidate('fix you', { tags: ['rock'], audio: sadSound }), 'triste') >= .9);
-  assert.equal(moodAffinity(candidate('fix you', { tags: ['rock'], audio: sadSound }), 'feliz'), 0);
+  // La letra aporta el contexto que la valencia baja no puede establecer.
+  assert.ok(moodAffinity(candidate('fix you', { tags: ['sad', 'rock'], audio: sadSound }), 'triste') >= .9);
+  assert.equal(moodAffinity(candidate('fix you', { tags: ['sad', 'rock'], audio: sadSound }), 'feliz'), 0);
   // Etiquetado "happy" por ironía o error, pero el sonido es triste: se descarta.
   assert.ok(moodAffinity(candidate('mislabel', { tags: ['happy'], audio: sadSound }), 'feliz') < .65);
   assert.ok(moodAffinity(candidate('agree', { tags: ['happy'], audio: happySound }), 'feliz') >= .9);
@@ -103,7 +103,7 @@ test('bailable no es triste y lo alegre exige ritmo', () => {
   const doinItRight = { valence: .19, energy: .45, danceability: .8, acousticness: .39 };
   assert.equal(moodAffinity(candidate('doin it right', { tags: ['electronic'], audio: doinItRight }), 'triste'), 0);
   const fixYou = { valence: .12, energy: .42, danceability: .21, acousticness: .16 };
-  assert.ok(moodAffinity(candidate('fix you', { tags: ['rock'], audio: fixYou }), 'triste') >= .9);
+  assert.ok(moodAffinity(candidate('fix you', { tags: ['sad', 'rock'], audio: fixYou }), 'triste') >= .9);
 });
 test('tempo percibido: corrige el doble/mitad del detector y calibra con canciones reales', () => {
   const f = (tempo: number, energy: number, valence = .5, danceability = .5) => ({ tempo, energy, valence, danceability, acousticness: .3 });
@@ -159,7 +159,7 @@ test('la sorpresa ocasional: distinta a tu gusto, muy acorde al mood y no un meg
   assert.equal(surprise?.title, 'afro');
 });
 
-test('margen para tus artistas: entran si su audio encaja bastante, nunca con etiqueta contraria', () => {
+test('el artista favorito no reduce el umbral de emoción ni rescata audio ambiguo', () => {
   // TQG (Karol G): valence .70, energy .65, dance .84, 90 BPM → audio ≈ .7: no basta para un desconocido.
   const tqg = { valence: .7, energy: .65, danceability: .84, acousticness: .2, tempo: 90 };
   const sad = { valence: .1, energy: .3, danceability: .3, acousticness: .5, tempo: 70 };
@@ -167,7 +167,7 @@ test('margen para tus artistas: entran si su audio encaja bastante, nunca con et
   const fav = candidate('TQG', { artist: 'Karol G', tags: ['reggaeton'], audio: { ...tqg, valence: .5 } });
   const stranger = candidate('Otra', { artist: 'Nadie', tags: ['reggaeton'], audio: { ...tqg, valence: .5 } });
   assert.ok(audioMatch(fav.audio!, 'feliz') >= .6 && audioMatch(fav.audio!, 'feliz') < .8);
-  assert.ok(rankRecommendations([fav], 'feliz', prefs).some(t => t.title === 'TQG'));
+  assert.equal(rankRecommendations([fav], 'feliz', prefs).length, 0);
   assert.ok(!rankRecommendations([stranger], 'feliz', prefs).length, 'un desconocido necesita encajar con claridad');
   assert.ok(!rankRecommendations([candidate('Triste', { artist: 'Karol G', tags: ['reggaeton'], audio: sad })], 'feliz', prefs).length, 'el margen no rescata un tema que no suena al mood');
   assert.ok(!rankRecommendations([candidate('Neg', { artist: 'Karol G', tags: ['sad'], audio: { ...tqg, valence: .5 } })], 'feliz', prefs).length, 'una etiqueta contraria sigue excluyendo');
@@ -192,6 +192,7 @@ test('letra: detecta el desamor bailable y lo veta de feliz y romántico, no de 
   assert.ok(moodAffinity(track, 'motivado') >= .65, 'el desamor movido sí cabe en motivado');
   // El margen para tus artistas no salta el veto de la letra.
   assert.equal(rankRecommendations([{ ...track, artist: 'Mine' }], 'feliz', { genres: [], artists: ['Mine'] }).length, 0);
+  assert.equal(moodAffinity({ ...track, audio: undefined, tags: ['happy'] }, 'feliz'), 0, 'el veto de letra también se conserva cuando falla el proveedor de audio');
 });
 test('letra: lo alegre se veta de triste; sin letra suficiente no se opina', () => {
   const happy = analyzeLyrics(letraAlegre)!;

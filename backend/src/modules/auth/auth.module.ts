@@ -5,12 +5,13 @@ import { Body, CanActivate, ConflictException, Controller, Delete, ExecutionCont
 import { TokenService } from './token.service';
 import { Throttle } from '@nestjs/throttler';
 import { Transform } from 'class-transformer';
-import { ArrayMaxSize, ArrayUnique, IsArray, IsEmail, IsIn, IsString, Length, MaxLength } from 'class-validator';
+import { ArrayMaxSize, ArrayUnique, IsArray, IsEmail, IsIn, IsInt, IsOptional, IsString, Length, Max, Min, MaxLength } from 'class-validator';
 import { createHash, randomBytes } from 'node:crypto';
 import { Schema } from 'mongoose';
 import { DatabaseService } from '../database/database.module';
 
-export const GENRES = ['pop', 'rock', 'indie', 'electronic', 'hip-hop', 'r&b', 'latin', 'jazz', 'classical', 'folk', 'metal', 'ambient'];
+import { GENRE_KEYS } from '../music/genres';
+export const GENRES = GENRE_KEYS;
 export class CredentialsDto {
   @Transform(({ value }) => typeof value === 'string' ? value.trim().toLowerCase() : value) @IsEmail() @MaxLength(254) email!: string;
   @IsString() @Length(10, 128) password!: string;
@@ -19,10 +20,12 @@ export class RegisterDto extends CredentialsDto {
   @Transform(({ value }) => typeof value === 'string' ? value.trim() : value) @IsString() @Length(2, 60) name!: string;
 }
 export class PreferencesDto {
-  @IsArray() @ArrayMaxSize(6) @ArrayUnique() @IsIn(GENRES, { each: true }) genres!: string[];
+  @IsOptional() @IsInt() @Min(1) @Max(5) preferenceLevel?: number;
+  @IsArray() @ArrayMaxSize(12) @ArrayUnique() @IsIn(GENRES, { each: true }) genres!: string[];
   @IsArray() @ArrayMaxSize(5) @ArrayUnique() @IsString({ each: true }) @Length(1, 80, { each: true }) artists!: string[];
 }
 const preferencesSchema = new Schema({
+  preferenceLevel: { type: Number, min: 1, max: 5, default: 3 },
   genres: { type: [String], enum: GENRES, default: [] }, artists: { type: [String], default: [] },
 }, { _id: false });
 export const userSchema = new Schema({
@@ -41,7 +44,7 @@ const DAYS = 7 * 24 * 60 * 60;
 const cookieName = 'vibetrack_session';
 const tokenHash = (value: string) => createHash('sha256').update(value).digest('hex');
 export function publicUser(user: any) {
-  return { id: String(user._id), email: user.email, name: user.name, role: user.role || 'user', preferences: user.preferences ? { genres: [...user.preferences.genres], artists: [...user.preferences.artists] } : null };
+  return { id: String(user._id), email: user.email, name: user.name, role: user.role || 'user', preferences: user.preferences ? { genres: [...user.preferences.genres], artists: [...user.preferences.artists], preferenceLevel: user.preferences.preferenceLevel ?? 3 } : null };
 }
 @Injectable()
 export class AuthService {
@@ -182,8 +185,8 @@ export class AuthController {
   }
   @Put('preferences') @UseGuards(WriteGuard, AuthGuard)
   async preferences(@Req() req: any, @Body(new ValidationPipe({ expectedType: PreferencesDto, transform: true, whitelist: true, forbidNonWhitelisted: true })) input: PreferencesDto) {
-    const clean = { genres: input.genres, artists: [...new Set(input.artists.map(artist => artist.trim()).filter(Boolean))] };
-    return publicUser(await this.auth.preferences(req.user, clean.genres.length || clean.artists.length ? clean : null));
+    const clean = { genres: input.genres, artists: [...new Set(input.artists.map(artist => artist.trim()).filter(Boolean))], preferenceLevel: input.preferenceLevel ?? 3 };
+    return publicUser(await this.auth.preferences(req.user, clean));
   }
   @Delete('preferences') @UseGuards(WriteGuard, AuthGuard)
   async clearPreferences(@Req() req: any) { return publicUser(await this.auth.preferences(req.user, null)); }

@@ -23,6 +23,49 @@ async function fixture(options: any, run: (music: MusicService, data: any) => Pr
     globalThis.fetch = previous; if (key === undefined) delete process.env.LASTFM_API_KEY; else process.env.LASTFM_API_KEY = key; }
 }
 
+test('likes afinan las tandas nuevas sin cambiar la actual; todos los temas mostrados se clasifican', async () => {
+  await fixture({}, async music => {
+    const preferences = { artists: ['Artist A'], genres: [] };
+    const first = await music.recommendations('feliz', 1, preferences, 'feedback', 'listener');
+    assert.equal(first.status, 'ready'); await audioReady(first);
+    const original = first.tracks.map(song => song.id);
+    const sessions = (music as any).sessions;
+    const session = [...sessions.values()][0] as any;
+    assert.ok([...session.feedbackTracks.values()].every((song: any) => song.metadataChecked));
+    const liked = first.tracks[0], disliked = first.tracks.find(song => song.artist !== liked.artist)!;
+    assert.ok(disliked);
+    await music.rate('listener', 'feliz', liked.id, 'like');
+    await music.rate('listener', 'feliz', disliked.id, 'dislike');
+    assert.equal(await music.recommendations('feliz', 1, preferences, 'feedback', 'listener'), first);
+    assert.deepEqual(first.tracks.map(song => song.id), original);
+    const next = await music.recommendations('feliz', 2, preferences, 'feedback', 'listener');
+    assert.equal(next.status, 'ready'); assert.equal(next.tracks.length, 7);
+    assert.ok(session.sources.some((source: any) => source.kind === 'artist' && source.name === liked.artist), 'el artista valorado participa en las fuentes futuras');
+    assert.ok(session.sources.some((source: any) => source.mood));
+    assert.equal(Object.keys(await music.ratings('listener', 'feliz')).length, 2);
+  });
+});
+
+test('consulta favoritos antes de esperar la expansión de similares', async () => {
+  await fixture({}, async music => {
+    const service = music as any;
+    let favoriteStarted = false;
+    const candidates = service.providers.candidates.bind(service.providers);
+    service.providers.candidates = (...args: any[]) => {
+      if (args[0] === 'artist' && args[1] === 'Artist A') favoriteStarted = true;
+      return candidates(...args);
+    };
+    const related = service.addRelated.bind(service);
+    service.addRelated = (...args: any[]) => {
+      assert.ok(favoriteStarted, 'el catálogo favorito no espera las consultas de similares');
+      return related(...args);
+    };
+    const batch = await music.recommendations('feliz', 1, { artists: ['Artist A'], genres: [], preferenceLevel: 3 }, 'parallel', 'account');
+    assert.equal(batch.status, 'ready');
+    assert.ok(batch.tracks.filter(track => track.artist === 'Artist A').length >= 3);
+  });
+});
+
 test('tres tandas consecutivas de siete con preview, sin repetidos, con un catálogo por artista', async () => {
   await fixture({}, async (music, data) => {
     const preferences = { artists: ['Artist A'], genres: [] };
@@ -254,7 +297,9 @@ test('un artista relacionado conserva afinidad cuando sus temas llegan desde el 
   await fixture({ similar: ['Pop Artist'] }, async (music, data) => {
     globalThis.fetch = async input => {
       const url = new URL(String(input));
-      if (url.searchParams.get('method') === 'track.getInfo') return new Response(JSON.stringify({ track: { toptags: { tag: [{ name: 'rock' }] } } }));
+      const tags = [{ name: url.searchParams.get('artist') === 'Pop Artist' ? 'happy' : 'sad', count: 100 }, { name: 'rock', count: 100 }];
+      if (url.searchParams.get('method') === 'track.getInfo') return new Response(JSON.stringify({ track: { toptags: { tag: tags } } }));
+      if (url.searchParams.get('method') === 'track.getTopTags') return new Response(JSON.stringify({ toptags: { tag: tags } }));
       return data.fetcher(input);
     };
     const batch = await music.recommendations('feliz', 1, { artists: ['Artist A'], genres: [] });
@@ -264,7 +309,7 @@ test('un artista relacionado conserva afinidad cuando sus temas llegan desde el 
   });
 });
 
-test('artistas: coincidencia exacta primero, prefijos después, sin canales Topic ni duplicados', async () => {
+test('artistas: coincidencia exacta primero, luego por popularidad, sin canales Topic ni duplicados', async () => {
   await fixture({}, async (music, data) => {
     globalThis.fetch = async input => {
       const url = new URL(String(input));
@@ -280,7 +325,7 @@ test('artistas: coincidencia exacta primero, prefijos después, sin canales Topi
       return data.fetcher(input);
     };
     const results = await music.artists('phoenix');
-    assert.deepEqual(results.slice(0, 3).map(item => item.name), ['Phoenix', 'Phoenix Rising', 'The Phoenix']);
+    assert.deepEqual(results.slice(0, 3).map(item => item.name), ['Phoenix', 'The Phoenix', 'Phoenix Rising']); // Tras la exacta decide la popularidad.
     assert.ok(results.every(item => item.kind === 'artist' && !/topic|Other Artist/i.test(item.name)));
     assert.equal(results.filter(item => item.name.toLowerCase() === 'phoenix').length, 1);
   });
@@ -402,23 +447,68 @@ function untaggedFetcher(data: any) {
     return data.fetcher(input);
   };
 }
-test('con rasgos de audio recomienda canciones que Last.fm no etiquetó con el mood', async () => {
+test('sin evidencia emocional no rellena feliz o triste con audio ambiguo; conserva motivado', async () => {
   const audio = (item: any) => item.index % 2 ? { valence: .9, energy: .8 } : { valence: .1, energy: .3 };
   await fixture({ emptyMood: true, audio }, async (music, data) => {
     globalThis.fetch = untaggedFetcher(data);
-    const batch = await music.recommendations('feliz', 1, { artists: ['Artist A'], genres: [] });
-    assert.equal(batch.status, 'ready'); assert.equal(batch.tracks.length, 7);
-    assert.ok(batch.tracks.every(track => Number(track.title.split(' ').at(-1)) % 2 === 1), 'sólo los temas que suenan alegres');
-    assert.ok(batch.tracks.every(track => track.id.startsWith('deezer:') && track.lastfmUrl));
-    const sad = await music.recommendations('triste', 1, { artists: ['Artist A'], genres: [] });
-    assert.equal(sad.status, 'ready');
-    assert.ok(sad.tracks.every(track => Number(track.title.split(' ').at(-1)) % 2 === 0));
+    for (const mood of ['feliz', 'triste']) {
+      const batch = await music.recommendations(mood, 1, { artists: ['Artist A'], genres: [] });
+      assert.equal(batch.status, 'exhausted');
+      assert.equal(batch.tracks.length, 0, 'no inventa seguridad para completar siete');
+    }
+    const active = await music.recommendations('motivado', 1, { artists: ['Artist A'], genres: [] });
+    assert.equal(active.status, 'ready');
+    assert.ok(active.tracks.every(track => Number(track.title.split(' ').at(-1)) % 2 === 1));
   });
 });
+
 test('sin ReccoBeats ni Deezer la clasificación vuelve a las etiquetas de Last.fm', async () => {
   await fixture({ deezerDown: true }, async music => {
     const batch = await music.recommendations('feliz', 1, { artists: ['Artist A'], genres: [] });
     assert.equal(batch.status, 'ready'); assert.equal(batch.tracks.length, 7);
+  });
+});
+
+test('la clasificación no consulta letras: una caída de LRCLIB no afecta las tandas', async () => {
+  await fixture({}, async (music, data) => {
+    let lyricCalls = 0;
+    globalThis.fetch = async input => new URL(String(input)).hostname === 'lrclib.net'
+      ? (lyricCalls++, new Response('', { status: 503 })) : data.fetcher(input);
+    const batch = await music.recommendations('feliz', 1, { artists: ['Artist A'], genres: [] }, 'no-lyrics');
+    assert.equal(batch.status, 'ready');
+    assert.equal(batch.tracks.length, 7);
+    assert.equal(lyricCalls, 0);
+  });
+});
+
+test('no consulta letras de un catálogo cuyo audio ya contradice el mood', async () => {
+  await fixture({ count: 12, emptyMood: true, audio: () => ({ valence: .1, energy: .2 }) }, async (music, data) => {
+    const result = await music.recommendations('feliz', 1, { artists: ['Artist A'], genres: [] }, 'prune-audio');
+    assert.equal(result.tracks.length, 0);
+    assert.equal(data.calls.filter((call: any) => call.host === 'lrclib.net').length, 0);
+  });
+});
+
+test('dos ediciones con títulos diferentes y el mismo ISRC no se repiten entre tandas', async () => {
+  await fixture({}, async (music, data) => {
+    globalThis.fetch = async input => {
+      const response = await data.fetcher(input);
+      if (new URL(String(input)).hostname !== 'api.deezer.com') return response;
+      const body = await response.json();
+      for (const track of body.data || []) track.isrc = `QZFIX${String(Math.floor(track.id / 2)).padStart(7, '0')}`;
+      return new Response(JSON.stringify(body));
+    };
+    const recordings = new Set<string>();
+    for (const page of [1, 2]) {
+      const batch = await music.recommendations('feliz', page, { artists: ['Artist A'], genres: [] }, 'recordings');
+      assert.equal(batch.status, 'ready'); await audioReady(batch);
+      for (const track of batch.tracks) {
+        assert.ok(track.isrc);
+        assert.ok(!recordings.has(track.isrc), `grabación repetida: ${track.title}`);
+        recordings.add(track.isrc);
+      }
+    }
+    assert.equal(recordings.size, 14);
   });
 });
 
@@ -479,4 +569,78 @@ test('letras: se consultan en LRCLIB y sólo se cachea el perfil, nunca la letra
     const cached = JSON.stringify([...stored.values()]);
     assert.ok(!cached.includes('olvidé') && !cached.includes('olvide') && !cached.includes('tusa'), 'la letra no se guarda');
   } finally { globalThis.fetch = previous; }
+});
+
+test('favoritos con poco rendimiento para el mood siguen llenando su cupo a tiempo', async () => {
+  // Sólo 1 de cada 10 temas de Artist A es alegre; el resto del catálogo sí encaja. Con latencia real
+  // de red, revisar pocos favoritos por ronda dejaba la tanda sin ellos al llegar a los 7 s.
+  await fixture({ similar: ['Artist B'] }, async (music, data) => {
+    globalThis.fetch = async input => {
+      await new Promise(resolve => setTimeout(resolve, 80));
+      const url = new URL(String(input));
+      const method = url.searchParams.get('method');
+      if (method === 'track.getInfo' || method === 'track.getTopTags') {
+        const index = Number((url.searchParams.get('track') || '').split(' ').at(-1));
+        const happy = url.searchParams.get('artist') !== 'Artist A' || index % 10 === 0;
+        const tags = [{ name: happy ? 'happy' : 'sad', count: 100 }, { name: 'rock', count: 100 }];
+        return new Response(JSON.stringify(method === 'track.getInfo' ? { track: { listeners: '100000', toptags: { tag: tags } } } : { toptags: { tag: tags } }));
+      }
+      return data.fetcher(input);
+    };
+    music.random = () => .5; // Orden determinista: la prueba mide el esfuerzo de búsqueda, no la variación.
+    const started = Date.now();
+    const batch = await music.recommendations('feliz', 1, { artists: ['Artist A'], genres: [], preferenceLevel: 3 }, 'low-yield', 'account');
+    const elapsed = Date.now() - started;
+    assert.equal(batch.status, 'ready'); assert.equal(batch.tracks.length, 7);
+    assert.equal(batch.tracks.filter(track => track.artist === 'Artist A').length, 4, 'Equilibrado: 4 de tus favoritos');
+    assert.ok(elapsed < 7000, `no necesita esperar al límite de 7 s (${elapsed} ms)`);
+  });
+});
+
+test('artistas: sólo el artista o banda principal, sin colaboraciones que lo sustituyan', async () => {
+  const before = globalThis.fetch, key = process.env.LASTFM_API_KEY;
+  process.env.LASTFM_API_KEY = 'fixture-key';
+  const results: Record<string, Array<[string, number]>> = {
+    daft: [['Daft Punk & Pharrell Williams', 300000], ['Daft Punk', 5000000], ['Daft Punk feat. Julian Casablancas', 90000], ['The Weeknd, Daft Punk', 81894], ['Daft Punk - Stardust', 15179]],
+    simon: [['Simon & Garfunkel', 3000000], ['Simon', 1200]],
+    earth: [['Earth, Wind & Fire', 3110856], ['Earth Wind', 264], ['Earth Wind and Fire', 142324], ['Earth, Wind & Fire, The Emotions', 23811]],
+    drake: [['Drake', 6000000], ['Drake Bell', 400000], ['Drake & Future', 50000]],
+    mumford: [['Mumford', 2215], ['Mumford & Sons', 2754324], ['Mumford And Sons', 228389], ['Marcus Mumford', 144619], ['Mumford & Sons & Hozier', 3551]],
+    'bad bunny': [['Bad Bunny feat. Jhay Cortez', 150000], ['Bad Bunny x Rosalía', 90000]],
+  };
+  globalThis.fetch = async input => {
+    const term = new URL(String(input)).searchParams.get('artist') || '';
+    return new Response(JSON.stringify({ results: { artistmatches: { artist: (results[term] || []).map(([name, listeners]) => ({ name, listeners: String(listeners), mbid: '' })) } } }));
+  };
+  try {
+    const providers = new (require('../src/modules/music/music.providers').MusicProviders)(new MusicCache());
+    const names = async (term: string) => (await providers.artists(term)).map((item: any) => item.name);
+    assert.deepEqual(await names('daft'), ['Daft Punk'], 'las colaboraciones no aparecen junto al original');
+    assert.deepEqual(await names('simon'), ['Simon & Garfunkel'], 'un dúo real con & se conserva; un nombre truncado poco escuchado no');
+    assert.deepEqual(await names('drake'), ['Drake', 'Drake Bell'], 'otro artista que sólo comparte palabra se conserva');
+    assert.deepEqual(await names('mumford'), ['Mumford & Sons', 'Marcus Mumford'], 'sin duplicados por and/& ni colaboraciones');
+    assert.deepEqual(await names('earth'), ['Earth, Wind & Fire']);
+    assert.deepEqual(await names('bad bunny'), ['Bad Bunny'], 'si sólo aparecen colaboraciones, se ofrece el artista principal');
+  } finally { globalThis.fetch = before; if (key === undefined) delete process.env.LASTFM_API_KEY; else process.env.LASTFM_API_KEY = key; }
+});
+
+test('nivel 5 sin canciones para el mood: amplía a artistas parecidos y lo avisa', async () => {
+  // Todo el catálogo de Artist A es triste (no encaja con feliz); Pop Artist, desde el mood, sí.
+  await fixture({ wrongMood: Array.from({ length: 60 }, (_, i) => i + 1), similar: ['Pop Artist'] }, async (music, data) => {
+    globalThis.fetch = async input => {
+      const url = new URL(String(input));
+      const method = url.searchParams.get('method');
+      if ((method === 'track.getInfo' || method === 'track.getTopTags') && url.searchParams.get('artist') !== 'Artist A') {
+        const tags = [{ name: 'happy', count: 100 }, { name: 'pop', count: 100 }];
+        return new Response(JSON.stringify(method === 'track.getInfo' ? { track: { listeners: '100000', toptags: { tag: tags } } } : { toptags: { tag: tags } }));
+      }
+      return data.fetcher(input);
+    };
+    const started = Date.now();
+    const batch = await music.recommendations('feliz', 1, { artists: ['Artist A'], genres: [], preferenceLevel: 5 }, 'strict', 'account');
+    assert.equal(batch.status, 'ready'); assert.equal(batch.tracks.length, 7);
+    assert.match(batch.notice || '', /añadimos artistas parecidos/);
+    assert.ok(batch.tracks.every(track => track.artist !== 'Artist A'));
+    assert.ok(Date.now() - started < 5000, 'no espera al límite de tiempo para rendirse');
+  });
 });

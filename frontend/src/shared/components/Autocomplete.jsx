@@ -1,13 +1,13 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { useSuggestions } from '../hooks/useSuggestions';
-export default function Autocomplete({ label, value, onChange, onSelect, endpoint, disabled = false, excluded = [], placeholder = '', inputName, selectionOnly = false }) {
+export default function Autocomplete({ label, value, onChange, onSelect, endpoint, disabled = false, excluded = [], placeholder = '', inputName, selectionOnly = false, kindFilter }) {
   const id = useId();
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(-1);
   const list = useRef(null);
   const resource = useSuggestions(endpoint, value, open && !disabled);
   const nameKey = name => name.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLocaleLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
-  const options = resource.items.filter(item => (!selectionOnly || item.kind === 'artist') && !excluded.some(name => nameKey(name) === nameKey(item.name)));
+  const options = resource.items.filter(item => (!selectionOnly || item.kind === 'artist') && (!kindFilter || item.kind === kindFilter) && !excluded.some(name => nameKey(name) === nameKey(item.name)));
   const visible = open && Boolean(value.trim()) && !disabled;
   const choose = item => { setOpen(false); setActive(-1); onSelect(item); };
   useEffect(() => {

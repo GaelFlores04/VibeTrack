@@ -13,6 +13,8 @@ function createMusicFixture(options = {}) {
   async function fetcher(input) {
     const url = new URL(String(input));
     calls.push({ host: url.hostname, method: url.searchParams.get('method'), term: url.searchParams.get('term'), tag: url.searchParams.get('tag'), attribute: url.searchParams.get('attribute') });
+    // Ausencia confirmada, distinta de una caída temporal del proveedor.
+    if (url.hostname === 'lrclib.net') return url.pathname.endsWith('/get') ? new Response('', { status: 404 }) : json([]);
     if (url.hostname === 'api.deezer.com') {
       if (failApple || options.deezerDown) return new Response('', { status: 503 });
       const track = url.pathname.match(/^\/track\/(\d+)$/);
@@ -40,9 +42,11 @@ function createMusicFixture(options = {}) {
     }
     if (method === 'track.search') return json({ results: { trackmatches: { track: records.slice(0, 4).map(item => ({ name: item.title, artist: item.artist })) } } });
     if (method === 'artist.getSimilar') return json({ similarartists: { artist: (options.similar || []).map(name => ({ name, match: '0.9' })) } });
-    if (method === 'track.getInfo') {
+    if (method === 'track.getInfo' || method === 'track.getTopTags') {
       const index = Number((url.searchParams.get('track') || '').split(' ').at(-1));
       const tags = options.wrongMood?.includes(index) ? ['sad', 'rock'] : ['happy', 'rock'];
+      // Como en Last.fm: getTopTags trae las mismas etiquetas que getInfo, con su recuento.
+      if (method === 'track.getTopTags') return json({ toptags: { tag: tags.map(name => ({ name, count: 100 })) } });
       return json({ track: { listeners: '100000', toptags: { tag: tags.map(name => ({ name })) } } });
     }
     const source = method === 'artist.getTopTracks' ? url.searchParams.get('artist') : url.searchParams.get('tag') === 'rock' ? artists[0] : artists[2];

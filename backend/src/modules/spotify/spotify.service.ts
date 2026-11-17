@@ -1,3 +1,4 @@
+import { IMPORT_SOURCES, ImportSourceStatus, SpotifySnapshot, collectSpotifyItems, spotifyTasteProfile } from './spotify-taste';
 import { BadRequestException, HttpException, Inject, Injectable, Optional, ServiceUnavailableException, UnauthorizedException } from '@nestjs/common';
 import { createHash, randomBytes } from 'node:crypto';
 import { DatabaseService } from '../database/database.module';
@@ -9,14 +10,14 @@ import { decrypt, encrypt } from './spotify-crypto';
 // Permisos mínimos: reproducir en el navegador (Web Playback SDK) y leer lo que más escuchas.
 export const SPOTIFY_SCOPES = [
   'streaming', 'user-read-email', 'user-read-private', 'user-modify-playback-state', 'user-read-playback-state',
-  'user-top-read', 'user-read-recently-played',
+  'user-top-read', 'user-read-recently-played', 'user-follow-read', 'user-library-read',
 ];
 const ACCOUNTS = 'https://accounts.spotify.com';
 const API = 'https://api.spotify.com/v1';
 // Spotify caduca el token de renovación a los seis meses de la autorización original.
 const LINK_LIFETIME = 182 * 24 * 60 * 60000;
 
-interface Link { refresh: string; scope: string; connectedAt: Date; expiresAt: Date; importedAt?: Date; topArtists?: string[] }
+interface Link { refresh: string; scope: string; connectedAt: Date; expiresAt: Date; importedAt?: Date; topArtists?: string[]; tasteSnapshot?: SpotifySnapshot; importSources?: ImportSourceStatus[] }
 interface MatchInput { id: string; title: string; artist: string }
 
 @Injectable()
@@ -26,6 +27,8 @@ export class SpotifyService {
   private pending = new Map<string, { userId: string; verifier: string; expires: number }>();
   private tokens = new Map<string, { token: string; expires: number }>();
   private memoryLinks = new Map<string, Link>();
+  private imports = new Map<string, Promise<any>>();
+  private disconnecting = new Set<string>();
   private uris = new Map<string, { uri: string | null; expires: number }>();
 
   constructor(
@@ -44,10 +47,11 @@ export class SpotifyService {
     const collection = this.collection();
     if (!collection) return this.memoryLinks.get(userId) || null;
     const doc = await collection.findOne({ _id: userId, refresh: { $exists: true } }, { maxTimeMS: 500 });
-    return doc ? { refresh: doc.refresh, scope: doc.scope, connectedAt: doc.connectedAt, expiresAt: doc.expiresAt, importedAt: doc.importedAt, topArtists: doc.topArtists } : null;
+    return doc ? { refresh: doc.refresh, scope: doc.scope, connectedAt: doc.connectedAt, expiresAt: doc.expiresAt, importedAt: doc.importedAt, topArtists: doc.topArtists, tasteSnapshot: doc.tasteSnapshot, importSources: doc.importSources } : null;
   }
   private async saveLink(userId: string, link: Partial<Link>) {
     const collection = this.collection();
+    if (this.database && !collection) throw new ServiceUnavailableException('No se pudo guardar la conexión con Spotify. Reintenta en unos segundos.');
     if (!collection) { this.memoryLinks.set(userId, { ...(this.memoryLinks.get(userId) as Link), ...link }); return; }
     await collection.updateOne({ _id: userId }, { $set: link }, { upsert: true, maxTimeMS: 500 });
   }
@@ -94,6 +98,7 @@ export class SpotifyService {
       // Una cuenta fuera de la lista de usuarios autorizados de la app (modo desarrollo) falla aquí o al usar la API.
       throw new BadRequestException('Spotify rechazó la conexión. Si la app está en modo desarrollo, tu cuenta debe estar entre sus usuarios autorizados.');
     }
+    await this.imports.get(pending.userId)?.catch(() => {});
     const now = Date.now();
     await this.saveLink(pending.userId, { refresh: encrypt(result.data.refresh_token), scope: String(result.data.scope || ''), connectedAt: new Date(now), expiresAt: new Date(now + LINK_LIFETIME) });
     this.tokens.set(pending.userId, { token: result.data.access_token, expires: now + (Number(result.data.expires_in) || 3600) * 1000 });
@@ -110,7 +115,7 @@ export class SpotifyService {
     if (!link) throw new UnauthorizedException('Conecta tu cuenta de Spotify.');
     const result = await this.tokenRequest({ grant_type: 'refresh_token', refresh_token: decrypt(link.refresh) });
     if (!result.ok) {
-      if (result.data?.error === 'invalid_grant') { await this.disconnect(userId); throw new UnauthorizedException('La conexión con Spotify caducó. Vuelve a conectarla.'); }
+      if (result.data?.error === 'invalid_grant') { await this.clearLink(userId); throw new UnauthorizedException('La conexión con Spotify caducó. Vuelve a conectarla.'); }
       throw new HttpException('Spotify no respondió. Inténtalo en unos segundos.', result.status === 429 ? 429 : 502);
     }
     // Spotify puede rotar el token de renovación: se guarda el nuevo.
@@ -139,42 +144,85 @@ export class SpotifyService {
       connectedAt: link?.connectedAt || null, expiresAt: link?.expiresAt || null,
       importedAt: link?.importedAt || null, topArtists: link?.topArtists || [],
       tasteSource: await this.music.tasteSource(userId),
+      importSources: link?.importSources || [],
+      topTracks: link?.tasteSnapshot ? spotifyTasteProfile(link.tasteSnapshot).tracks.slice(0, 10) : [],
+      missingScopes: link ? ['user-top-read', 'user-read-recently-played', 'user-follow-read', 'user-library-read'].filter(scope => !link.scope.split(' ').includes(scope)) : [],
     };
   }
 
   setTasteSource(userId: string, source: 'app' | 'spotify' | 'both') { return this.music.setTasteSource(userId, source); }
 
   async disconnect(userId: string) {
-    this.tokens.delete(userId);
-    this.memoryLinks.delete(userId);
-    this.music.forgetSpotify(userId);
+    this.disconnecting.add(userId);
+    try {
+      await this.imports.get(userId)?.catch(() => {});
+      await this.clearLink(userId);
+    } finally { this.disconnecting.delete(userId); }
+  }
+  private async clearLink(userId: string) {
     const collection = this.collection();
-    if (collection) await collection.deleteOne({ _id: userId }, { maxTimeMS: 500 }).catch(() => {});
+    if (this.database && !collection) throw new ServiceUnavailableException('No se pudo desvincular Spotify. Reintenta en unos segundos.');
+    if (collection) await collection.deleteOne({ _id: userId }, { maxTimeMS: 500 });
+    this.tokens.delete(userId); this.memoryLinks.delete(userId);
+    await this.music.forgetSpotify(userId);
   }
 
-  // Lo que más escuchas: top a medio y corto plazo más lo reciente, ponderado por posición.
-  async importTaste(userId: string) {
-    const [medium, short, recent] = await Promise.all([
-      this.api(userId, '/me/top/artists', { time_range: 'medium_term', limit: '20' }).catch(() => ({ items: [] })),
-      this.api(userId, '/me/top/artists', { time_range: 'short_term', limit: '20' }).catch(() => ({ items: [] })),
-      this.api(userId, '/me/player/recently-played', { limit: '50' }).catch(() => ({ items: [] })),
-    ]);
-    const weights = new Map<string, { name: string; weight: number }>();
-    const add = (name: unknown, weight: number) => {
-      if (typeof name !== 'string' || !name.trim()) return;
-      const key = normalize(name);
-      const entry = weights.get(key) || { name: name.trim(), weight: 0 };
-      entry.weight += weight;
-      weights.set(key, entry);
-    };
-    (medium.items || []).forEach((artist: any, i: number) => add(artist?.name, 1 - i / 25));
-    (short.items || []).forEach((artist: any, i: number) => add(artist?.name, 0.8 * (1 - i / 25)));
-    for (const item of recent.items || []) for (const artist of item?.track?.artists || []) add(artist?.name, 0.08);
-    const ranked = [...weights.values()].sort((a, b) => b.weight - a.weight);
-    if (!ranked.length) return { artists: [] };
-    await this.music.importSpotifyTaste(userId, ranked);
-    await this.saveLink(userId, { importedAt: new Date(), topArtists: ranked.slice(0, 5).map(item => item.name) });
-    return { artists: ranked.slice(0, 5).map(item => item.name) };
+  // At most three source requests at once. Concurrent refreshes share one import.
+  importTaste(userId: string) {
+    if (this.disconnecting.has(userId)) return Promise.reject(new UnauthorizedException('Spotify se está desvinculando.'));
+    const existing = this.imports.get(userId);
+    if (existing) return existing;
+    const request = this.importSnapshot(userId).finally(() => this.imports.delete(userId));
+    this.imports.set(userId, request);
+    return request;
+  }
+  private async importSnapshot(userId: string) {
+    const link = await this.getLink(userId);
+    if (!link) throw new UnauthorizedException('Conecta Spotify antes de importar tus gustos.');
+    const snapshot: SpotifySnapshot = { ...link.tasteSnapshot };
+    const statuses: ImportSourceStatus[] = [];
+    const scopes = new Set(link.scope.split(' '));
+    for (let offset = 0; offset < IMPORT_SOURCES.length; offset += 3) {
+      await Promise.all(IMPORT_SOURCES.slice(offset, offset + 3).map(async source => {
+        if (!scopes.has(source.scope)) {
+          statuses.push({ id: source.id, label: source.label, status: 'missing-permission', count: 0 }); return;
+        }
+        try {
+          const items: any[] = [];
+          let after: string | undefined, capped = false;
+          const pages = 'pages' in source ? source.pages : 1;
+          for (let page = 0; page < pages; page++) {
+            const params: Record<string, string> = { ...source.params };
+            if (source.id === 'saved') params.offset = String(page * 50);
+            if (after) params.after = after;
+            const result = await this.api(userId, source.path, params);
+            const container = source.id === 'followed' ? result.artists : result;
+            if (!Array.isArray(container?.items)) throw new Error('Invalid Spotify page');
+            items.push(...container.items);
+            capped = !!container.next;
+            if (!container.next) break;
+            after = container.cursors?.after;
+            if (source.id === 'followed' && !after) break;
+          }
+          snapshot[source.id] = collectSpotifyItems(items, source.path.endsWith('/artists') || source.id === 'followed');
+          statuses.push({ id: source.id, label: source.label, status: 'ready', count: items.length, capped });
+        } catch {
+          // Preserve the last successful source, but make its stale state visible.
+          statuses.push({ id: source.id, label: source.label, status: 'unavailable', count: 0 });
+        }
+      }));
+    }
+    if (!statuses.some(source => source.status === 'ready')) throw new ServiceUnavailableException('No se pudo actualizar Spotify. Conservamos la importación anterior. Revisa los permisos en Vinculaciones y reintenta.');
+    if (!(await this.getLink(userId))) throw new UnauthorizedException('La conexión con Spotify caducó durante la importación.');
+    const profile = spotifyTasteProfile(snapshot);
+    await this.music.importSpotifyTaste(userId, profile.artists, profile.tracks, profile.genres);
+    if (!(await this.getLink(userId))) {
+      await this.music.forgetSpotify(userId);
+      throw new UnauthorizedException('La conexión con Spotify caducó durante la importación.');
+    }
+    const ordered = IMPORT_SOURCES.map(source => statuses.find(item => item.id === source.id)!);
+    await this.saveLink(userId, { tasteSnapshot: snapshot, importSources: ordered, importedAt: new Date(), topArtists: profile.artists.map(item => item.name) });
+    return { artists: profile.artists.slice(0, 10).map(item => item.name), sources: ordered, tracks: profile.tracks.length };
   }
 
   // URI de Spotify para cada canción: por ISRC (misma grabación) y, si no, por título y artista.

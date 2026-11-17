@@ -19,3 +19,19 @@ services:
         sync: false
       - key: LASTFM_API_KEY
         sync: false
+      # Opcionales: sin ellos la app funciona, pero sin vincular Spotify.
+      # SPOTIFY_REDIRECT_URI = https://<tu-servicio>.onrender.com/api/spotify/callback
+      # (regístrala igual en el panel de Spotify for Developers).
+      - key: SPOTIFY_CLIENT_ID
+        sync: false
+      - key: SPOTIFY_CLIENT_SECRET
+        sync: false
+      - key: SPOTIFY_REDIRECT_URI
+        sync: false
+      - key: RECCOBEATS_ENABLED
+        value: 'true'
+      - key: LYRICS_ENABLED
+        value: 'true'
+      # El plan gratuito tiene 512 MB: el heap de Node se limita para no superar la memoria.
+      - key: NODE_OPTIONS
+        value: --max-old-space-size=384

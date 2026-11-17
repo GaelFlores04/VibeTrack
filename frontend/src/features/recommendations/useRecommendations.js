@@ -19,7 +19,7 @@ const wait = (ms, signal) => new Promise((resolve, reject) => {
 export function useRecommendations(mood, { owner = 'guest', initialPage = 1 } = {}) {
   const session = useRef(null);
   session.current ||= sessionFor(mood, owner);
-  const [state, setState] = useState({ batch: null, loading: true, message: '', error: '', nextPage: initialPage, exhausted: false, maxPage: 0 });
+  const [state, setState] = useState({ batch: null, loading: true, message: '', notice: '', error: '', nextPage: initialPage, exhausted: false, maxPage: 0 });
   const request = useRef(null);
   const pollTimer = useRef(null);
   const url = page => `/music/recommendations/${encodeURIComponent(mood)}?session=${session.current}&page=${page}`;
@@ -31,17 +31,19 @@ export function useRecommendations(mood, { owner = 'guest', initialPage = 1 } = 
     setState(previous => ({ ...previous, loading: true, message: '', error: '' }));
     try {
       let result;
+      const started = Date.now();
       // Continuar el mismo cursor permite evaluar más candidatos sin perder la tanda visible.
+      // Cada intento dura como mucho ~9 s en el servidor; pasados 45 s se muestra lo encontrado.
       for (let attempt = 0; attempt < 4; attempt++) {
         result = await api(url(page), controller.signal);
         if (controller.signal.aborted) return;
-        if (result.status !== 'retry' || attempt === 3) break;
-        setState(previous => ({ ...previous, batch: previous.batch?.status === 'ready' ? previous.batch : result.tracks.length ? result : previous.batch, message: 'Buscando más coincidencias para completar las 7 canciones…' }));
-        await wait(Math.min(15000, Math.max(1000, result.retryAfterMs || 1000)), controller.signal);
+        if (result.status !== 'retry' || attempt === 3 || Date.now() - started > 45000) break;
+        setState(previous => ({ ...previous, batch: previous.batch?.status === 'ready' ? previous.batch : result.tracks.length ? result : previous.batch, notice: result.notice || '', message: 'Buscando más coincidencias para completar las 7 canciones…' }));
+        await wait(Math.min(3000, Math.max(1000, result.retryAfterMs || 1000)), controller.signal);
       }
       if (controller.signal.aborted) return;
       if (result.status === 'ready' && result.tracks.length === 7) {
-        setState(previous => ({ batch: result, loading: false, message: '', error: '', nextPage: result.nextPage, exhausted: result.nextPage === null, maxPage: Math.max(previous.maxPage, result.page) }));
+        setState(previous => ({ batch: result, loading: false, message: '', notice: result.notice || '', error: '', nextPage: result.nextPage, exhausted: result.nextPage === null, maxPage: Math.max(previous.maxPage, result.page) }));
         // La selección ya está visible; sólo se actualiza la disponibilidad de audio.
         const pollAudio = (remaining = 8) => {
           if (!remaining || controller.signal.aborted) return;
@@ -56,7 +58,7 @@ export function useRecommendations(mood, { owner = 'guest', initialPage = 1 } = 
         };
         if (result.previewsPending) pollAudio();
       } else {
-        setState(previous => ({ ...previous, batch: previous.batch?.status === 'ready' ? previous.batch : result.tracks.length ? result : previous.batch, loading: false, message: result.message, nextPage: page, exhausted: result.status === 'exhausted' }));
+        setState(previous => ({ ...previous, batch: previous.batch?.status === 'ready' ? previous.batch : result.tracks.length ? result : previous.batch, loading: false, message: result.message, notice: result.notice || '', nextPage: page, exhausted: result.status === 'exhausted' }));
       }
     } catch (error) {
       if (controller.signal.aborted) return;

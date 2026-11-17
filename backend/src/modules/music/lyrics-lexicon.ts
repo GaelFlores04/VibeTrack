@@ -1,8 +1,8 @@
 // Tono de una letra con un diccionario local (español e inglés), sin servicios externos.
 // Sólo se conserva el perfil numérico: la letra nunca se guarda ni se muestra.
 // Súbelo al cambiar el vocabulario o los pesos: invalida los perfiles cacheados.
-export const LEXICON_VERSION = 2;
-export type LyricTheme = 'heartbreak' | 'sadness' | 'love' | 'party' | 'joy' | 'motivation';
+export const LEXICON_VERSION = 3;
+export type LyricTheme = 'heartbreak' | 'sadness' | 'love' | 'party' | 'joy' | 'motivation' | 'threat' | 'substance';
 export type LyricProfile = Record<LyricTheme, number> & { words: number };
 
 const normalize = (text: string) => ` ${text.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim()} `;
@@ -43,15 +43,23 @@ const LEXICON: Record<LyricTheme, string[]> = {
     'fuerte', 'ganar', 'luchar', 'levantate', 'no me rindo', 'nunca me rindo', 'campeon', 'strong', 'fight', 'winner', 'rise up',
     'never give up', 'unstoppable', 'hustle', 'grind', 'champion', 'believe',
   ],
+  // Narrativas que pueden tener un arreglo luminoso sin comunicar bienestar.
+  // Evitamos términos ambiguos como "shot", "high" o "fight" por sí solos.
+  threat: ['gun', 'guns', 'bullet', 'bullets', 'murder', 'shoot you', 'kill you', 'pistola', 'balas', 'asesinar', 'matarte'],
+  substance: ['crystal meth', 'methamphetamine', 'cocaine', 'heroin', 'overdose', 'cocaina', 'heroina', 'sobredosis'],
 };
 // El desamor suele decirse con menos palabras clave que la fiesta: pesa algo más.
-const WEIGHT: Record<LyricTheme, number> = { heartbreak: 1.5, sadness: 1.2, love: 1, party: 1, joy: 1, motivation: 1 };
+const WEIGHT: Record<LyricTheme, number> = { heartbreak: 1.5, sadness: 1.2, love: 1, party: 1, joy: 1, motivation: 1, threat: 1, substance: 1 };
 const THEMES = Object.keys(LEXICON) as LyricTheme[];
 const PATTERNS = Object.fromEntries(THEMES.map(theme => [theme, LEXICON[theme].map(normalize)])) as Record<LyricTheme, string[]>;
 
-function occurrences(text: string, phrase: string) {
+function occurrences(text: string, phrase: string, rejectNegated: boolean) {
   let count = 0;
-  for (let i = text.indexOf(phrase); i !== -1; i = text.indexOf(phrase, i + phrase.length - 1)) count++;
+  for (let i = text.indexOf(phrase); i !== -1; i = text.indexOf(phrase, i + phrase.length - 1)) {
+    const prefix = text.slice(0, i).trim().split(' ').slice(-3);
+    if (rejectNegated && prefix.some(word => ['not', 'never', 'no', 'nunca', 'sin'].includes(word))) continue;
+    count++;
+  }
   return count;
 }
 
@@ -62,7 +70,7 @@ export function analyzeLyrics(lyrics: string): LyricProfile | null {
   if (words < 25) return null; // Letra demasiado corta para opinar.
   const profile = { words } as LyricProfile;
   for (const theme of THEMES) {
-    const hits = PATTERNS[theme].reduce((sum, phrase) => sum + occurrences(text, phrase), 0) * WEIGHT[theme];
+    const hits = PATTERNS[theme].reduce((sum, phrase) => sum + occurrences(text, phrase, theme === 'joy' || theme === 'love'), 0) * WEIGHT[theme];
     profile[theme] = Number((1 - Math.exp(-(hits * 100 / words) / 2.5)).toFixed(3));
   }
   return profile;

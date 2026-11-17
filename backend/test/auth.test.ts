@@ -122,7 +122,10 @@ test('rutas HTTP en memoria: registro, login, preferencias aisladas, validación
     assert.equal((await request('preferences', 'PUT', { genres: ['invented'], artists: [] }, cookie)).status, 400);
     assert.equal((await request('preferences', 'PUT', { genres: ['pop'], artists: [], userId: 'someone-else' }, cookie)).status, 400);
     assert.equal((await request('preferences', 'PUT', { genres: ['rock', 'pop'], artists: [' Daft Punk '] }, cookie)).status, 200);
-    assert.deepEqual((await (await request('me', 'GET', undefined, cookie)).json().catch(() => null)).preferences, { genres: ['rock', 'pop'], artists: ['Daft Punk'] });
+    assert.deepEqual((await (await request('me', 'GET', undefined, cookie)).json().catch(() => null)).preferences, { genres: ['rock', 'pop'], artists: ['Daft Punk'], preferenceLevel: 3 });
+    for (const preferenceLevel of [0, 6, 2.5, '5']) assert.equal((await request('preferences', 'PUT', { genres: [], artists: [], preferenceLevel }, cookie)).status, 400);
+    assert.equal((await request('preferences', 'PUT', { genres: [], artists: [], preferenceLevel: 5 }, cookie)).status, 200);
+    assert.equal((await (await request('me', 'GET', undefined, cookie)).json()).preferences.preferenceLevel, 5);
     const second = await request('register', 'POST', { ...credentials, email: 'other@example.com' });
     const otherCookie = second.headers.get('set-cookie')!.split(';')[0];
     assert.equal((await (await request('me', 'GET', undefined, otherCookie)).json().catch(() => null)).preferences, null);

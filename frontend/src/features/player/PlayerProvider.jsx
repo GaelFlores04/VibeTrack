@@ -113,6 +113,20 @@ export function PlayerProvider({ children }) {
     void start(list, playable(list[position]) ? position : list.findIndex(playable));
   }, [start, playable]);
 
+  // Carga una cola en pausa (sin sonar): la página que la muestra pasa a ser la dueña del reproductor
+  // y el minirreproductor deja de mostrar la canción anterior.
+  const loadQueue = useCallback((tracks, startTrack, origin) => {
+    const list = tracks.map(keep);
+    const found = list.findIndex(item => item.id === startTrack?.id);
+    const position = found >= 0 ? found : Math.max(0, list.findIndex(playable));
+    if (engineRef.current === 'spotify') { spotifyRef.current.pause(); switchEngine('preview'); }
+    if (audio.current) { audio.current.pause(); audio.current.removeAttribute('src'); audio.current.load(); }
+    restoreAt.current = 0; lastPosition.current = 0;
+    setQueue(list); setIndex(position); setSource(origin || null); setLastChange('user');
+    setStatus('paused'); setTime({ current: 0, duration: 0 }); setError('');
+    if (spotifyRef.current.ready) spotifyRef.current.match(list).catch(() => {});
+  }, [playable]);
+
   // Las previews de una tanda llegan después que las tarjetas: se actualiza la cola sin cortar lo que suena.
   const syncQueue = useCallback((key, tracks) => {
     if (!key || source?.key !== key) return;
@@ -201,9 +215,9 @@ export function PlayerProvider({ children }) {
   }, [track, toggle, step]);
 
   const value = useMemo(() => ({
-    track, queue, index, status, source, lastChange, time, volume, error, engine, spotify, playable, playQueue, syncQueue, toggle, pause, seek, setVolume, next: () => step(1), previous: () => step(-1), registerEndAction, setPageTitle, setDocked,
+    track, queue, index, status, source, lastChange, time, volume, error, engine, spotify, playable, playQueue, loadQueue, syncQueue, toggle, pause, seek, setVolume, next: () => step(1), previous: () => step(-1), registerEndAction, setPageTitle, setDocked,
     isCurrent: id => track?.id === id,
-  }), [track, queue, index, status, source, lastChange, time, volume, error, engine, spotify, playable, playQueue, syncQueue, toggle, pause, seek, step, registerEndAction]);
+  }), [track, queue, index, status, source, lastChange, time, volume, error, engine, spotify, playable, playQueue, loadQueue, syncQueue, toggle, pause, seek, step, registerEndAction]);
 
   return <PlayerContext.Provider value={value}>
     {children}
@@ -213,7 +227,7 @@ export function PlayerProvider({ children }) {
       onLoadedMetadata={event => { const element = event.currentTarget; if (restoreAt.current && restoreAt.current < element.duration) { element.currentTime = restoreAt.current; restoreAt.current = 0; } setTime({ current: element.currentTime, duration: element.duration }); }}
       onEnded={ended}
       onError={event => { if (!track || !event.currentTarget.getAttribute('src')) return; setError('Este preview no está disponible; pasamos a la siguiente.'); if (!step(1, 'auto')) setStatus('paused'); }} />
-    {track && docked !== source?.key && <MiniPlayer {...{ track, queue, index, status, time, volume, setVolume, error, expanded, setExpanded, source, endAction, endVersion, toggle, seek, close, start, step, engine, playable }} />}
+    {track && docked !== '*' && docked !== source?.key && <MiniPlayer {...{ track, queue, index, status, time, volume, setVolume, error, expanded, setExpanded, source, endAction, endVersion, toggle, seek, close, start, step, engine, playable }} />}
   </PlayerContext.Provider>;
 }
 

@@ -17,7 +17,8 @@ COPY backend/package.json backend/package.json
 RUN npm ci --omit=dev --workspace=backend --include-workspace-root=false
 
 FROM node:22-bookworm-slim AS runtime
-ENV NODE_ENV=production HOST=0.0.0.0 PORT=3000
+# Heap acotado para instancias de 512 MB (Render free); se puede sobrescribir con NODE_OPTIONS.
+ENV NODE_ENV=production HOST=0.0.0.0 PORT=3000 NODE_OPTIONS=--max-old-space-size=384
 WORKDIR /app
 COPY --from=dependencies --chown=node:node /app/node_modules/ node_modules/
 COPY --from=build --chown=node:node /app/backend/package.json backend/package.json

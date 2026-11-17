@@ -100,6 +100,24 @@ export class TasteStore {
     if (collection) void collection.updateOne({ _id: key }, { $set: { ...value, expiresAt: new Date(Date.now() + TTL) } }, { upsert: true, maxTimeMS: 300 }).catch(() => {});
   }
 
+  async replace(key: string, signals: TasteSignal[]) {
+    const artists: Record<string, number> = {}, tags: Record<string, number> = {};
+    for (const signal of signals) {
+      artists[normalize(signal.artist)] = Math.min(1, signal.weight);
+      for (const tag of signal.tags || []) tags[normalize(tag.name)] = Math.max(tags[normalize(tag.name)] || 0, Math.min(1, signal.weight * tag.count / 100));
+    }
+    const value = { artists: top(artists), tags: top(tags) };
+    const collection = this.collection();
+    if (collection) await collection.updateOne({ _id: key }, { $set: { ...value, expiresAt: new Date(Date.now() + TTL) }, $unset: { audio: '' } }, { upsert: true, maxTimeMS: 1000 });
+    this.remember(key, value);
+  }
+
+  async remove(key: string) {
+    const collection = this.collection();
+    if (collection) await collection.deleteOne({ _id: key }, { maxTimeMS: 1000 });
+    this.memory.delete(key);
+  }
+
   private remember(key: string, value: StoredTaste) {
     this.memory.delete(key);
     if (this.memory.size >= 1000) this.memory.delete(this.memory.keys().next().value!);

@@ -16,7 +16,11 @@ export class MusicCache implements OnModuleInit {
   async remember<T>(key: string, ttl: number, fetcher: () => Promise<T>, persistent = true): Promise<T> {
     const id = createHash('sha256').update(`v3:${key}`).digest('hex');
     const cached = this.entries.get(id);
-    if (cached && cached.expires > Date.now()) return cached.value as T;
+    if (cached && cached.expires > Date.now()) {
+      // LRU: lo consultado sube al final y sobrevive a la expulsión (catálogos, letras, rasgos).
+      this.entries.delete(id); this.entries.set(id, cached);
+      return cached.value as T;
+    }
     const pending = this.pending.get(id);
     if (pending) return pending;
     const request = (async () => {
@@ -37,7 +41,8 @@ export class MusicCache implements OnModuleInit {
     try { return await request; } finally { this.pending.delete(id); }
   }
   private put(key: string, value: unknown, expires: number) {
-    if (this.entries.size >= 1500) this.entries.delete(this.entries.keys().next().value!);
+    this.entries.delete(key);
+    if (this.entries.size >= 4000) this.entries.delete(this.entries.keys().next().value!);
     this.entries.set(key, { value, expires });
   }
 }

@@ -154,6 +154,13 @@ html[data-input="keyboard"] .action-link:active {
   padding: 0;
 }
 
+.site-nav {
+  position: relative;
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+}
+
 .site-nav ul {
   gap: .35rem;
 }
@@ -162,17 +169,80 @@ html[data-input="keyboard"] .action-link:active {
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: .5rem;
   min-height: 44px;
-  padding: .5rem 1.1rem;
+  padding: .5rem 1.05rem .5rem .9rem;
   color: var(--ink-soft);
   text-decoration: none;
   border-radius: 999px;
-  transition: background-color 160ms ease, color 160ms ease;
+  transition: background-color 160ms ease, color 160ms ease, transform 160ms var(--ease-out);
+}
+
+.site-nav a svg {
+  color: var(--ink-faint);
+  transition: color 160ms ease;
 }
 
 .site-nav a.active {
-  color: var(--sky-strong);
-  background: rgba(143, 220, 255, .12);
+  color: var(--ink);
+  background: rgba(143, 220, 255, .1);
+}
+
+.site-nav a.active svg {
+  color: var(--sky);
+}
+
+/* Subrayado activo de 2px que se desliza entre secciones: el único movimiento de la navegación. */
+.nav-indicator {
+  position: absolute;
+  left: 0;
+  /* Sobre la línea del encabezado (su padding inferior + 1px de borde), como una pestaña. */
+  bottom: calc(-1rem - 1px);
+  height: 2px;
+  border-radius: 999px;
+  background: var(--sky);
+  pointer-events: none;
+}
+
+.nav-indicator.is-animated {
+  transition: transform 380ms var(--ease-out), width 380ms var(--ease-out);
+}
+
+.site-nav a:active, .bottom-nav a:active {
+  transform: scale(.96);
+}
+
+/* Retorno: nombra el destino; la flecha retrocede un poco al apuntar, como invitación. */
+.page-back {
+  margin: 1.1rem 0 .4rem;
+}
+
+.page-back a {
+  display: inline-flex;
+  align-items: center;
+  gap: .5rem;
+  min-height: 44px;
+  margin-left: -.75rem;
+  padding: .45rem 1rem .45rem .75rem;
+  border-radius: 999px;
+  color: var(--ink-soft);
+  font-size: .86rem;
+  text-decoration: none;
+  transition: background-color 160ms ease, color 160ms ease, transform 160ms var(--ease-out);
+}
+
+.page-back a svg {
+  color: var(--sky);
+  transition: transform 220ms var(--ease-out);
+}
+
+.page-back strong {
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.page-back a:active {
+  transform: scale(.97);
 }
 
 .header-shortcut, .bottom-nav {
@@ -268,6 +338,19 @@ html[data-input="keyboard"] .action-link:active {
     color: var(--ink);
     background: rgba(143, 220, 255, .07);
   }
+
+  .site-nav a:hover svg {
+    color: var(--sky-strong);
+  }
+
+  .page-back a:hover {
+    color: var(--ink);
+    background: rgba(143, 220, 255, .07);
+  }
+
+  .page-back a:hover svg {
+    transform: translateX(-3px);
+  }
 }
 
 @media (max-width: 720px) {
@@ -320,21 +403,55 @@ html[data-input="keyboard"] .action-link:active {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 4px;
+    gap: 3px;
     height: 100%;
     min-height: 64px;
     color: var(--ink-soft);
     text-decoration: none;
     font-size: .76rem;
+    transition: color 160ms ease, transform 160ms var(--ease-out);
+  }
+
+  /* Píldora tras el icono activo: aparece desde el centro al cambiar de sección. */
+  .bottom-nav .nav-icon {
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: 56px;
+    height: 30px;
+  }
+
+  .bottom-nav .nav-icon::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 999px;
+    background: rgba(143, 220, 255, .16);
+    opacity: 0;
+    transform: scaleX(.4);
+    transition: opacity 200ms ease, transform 280ms var(--ease-out);
+  }
+
+  .bottom-nav .nav-icon svg {
+    position: relative;
   }
 
   .bottom-nav a.active {
-    color: var(--sky-strong);
-    background: rgba(143, 220, 255, .07);
+    color: var(--ink);
+    font-weight: 700;
+  }
+
+  .bottom-nav a.active .nav-icon::before {
+    opacity: 1;
+    transform: none;
   }
 
   .bottom-nav a.active svg {
     color: var(--sky);
+  }
+
+  .page-back {
+    margin-top: .6rem;
   }
 
   .site-footer {
@@ -366,6 +483,14 @@ html[data-input="keyboard"] .action-link:active {
 
 @media (prefers-reduced-motion: reduce) {
 
+  .nav-indicator.is-animated, .bottom-nav .nav-icon::before, .page-back a svg {
+    transition: none;
+  }
+
+  .site-nav a:active, .bottom-nav a:active, .page-back a:active, .page-back a:hover svg {
+    transform: none;
+  }
+
   button, .button-link {
     transition: background-color 120ms ease, border-color 120ms ease;
   }
@@ -375,6 +500,7 @@ html[data-input="keyboard"] .action-link:active {
   }
 }
 
+html[data-input="keyboard"] .site-nav a:active, html[data-input="keyboard"] .bottom-nav a:active, html[data-input="keyboard"] .page-back a:active,
 html[data-input="keyboard"] button:active, html[data-input="keyboard"] .button-link:active {
   transform: none;
 }
