@@ -1,11 +1,17 @@
-import { Component, lazy, Suspense, useState } from 'react';
+import { Component, lazy, Suspense, useEffect, useRef, useState } from 'react';
 import Disc from '../../shared/components/Disc';
 
 // La escena 3D (three.js + React Three Fiber) se descarga sólo en esta página (D10).
 const PlayerScene = lazy(() => import('./scene/PlayerScene'));
 
 function hasWebGL() {
-  try { const canvas = document.createElement('canvas'); return !!(window.WebGLRenderingContext && (canvas.getContext('webgl2') || canvas.getContext('webgl'))); }
+  try {
+    const canvas = document.createElement('canvas');
+    const context = window.WebGLRenderingContext && (canvas.getContext('webgl2') || canvas.getContext('webgl'));
+    // La comprobación no debe dejar un contexto GPU abierto por cada visita.
+    context?.getExtension('WEBGL_lose_context')?.loseContext();
+    return Boolean(context);
+  }
   catch { return false; }
 }
 
@@ -31,15 +37,29 @@ const STATIC_ANCHOR = { x: 0.59, y: 0.8 };
 export default function PlayerStage({ tracks, selected, playing, reduced, onPick, label, lcd }) {
   const [failed, setFailed] = useState(() => !hasWebGL());
   const [anchor, setAnchor] = useState(null);
+  const stage = useRef(null);
+  const [active, setActive] = useState(true);
+  useEffect(() => {
+    let inView = true;
+    const update = () => setActive(inView && document.visibilityState !== 'hidden');
+    const observer = typeof IntersectionObserver === 'undefined' ? null : new IntersectionObserver(([entry]) => {
+      inView = entry.isIntersecting;
+      update();
+    });
+    if (stage.current) observer?.observe(stage.current);
+    document.addEventListener('visibilitychange', update);
+    update();
+    return () => { observer?.disconnect(); document.removeEventListener('visibilitychange', update); };
+  }, []);
   const dock = failed || !anchor ? STATIC_ANCHOR : anchor;
   // La escena es una imagen descrita; la LCD queda fuera de ella para seguir siendo texto accesible.
-  return <div className="stage">
+  return <div className="stage" ref={stage}>
     <div className="stage-scene" role="img" aria-label={label}>
     {failed || !selected
-      ? <StaticPlayer selected={selected} playing={playing && !reduced} />
+      ? <StaticPlayer selected={selected} playing={playing && active && !reduced} />
       : <SceneBoundary onError={() => setFailed(true)}>
         <Suspense fallback={<div className="stage-loading"><StaticPlayer selected={selected} playing={false} /><p>Preparando el reproductor…</p></div>}>
-          <PlayerScene tracks={tracks} selectedId={selected.id} playing={playing} reduced={reduced} onPick={onPick} onSlow={() => setFailed(true)} onAnchor={setAnchor} />
+          <PlayerScene tracks={tracks} selectedId={selected.id} playing={playing && active} reduced={reduced} onPick={onPick} onSlow={() => setFailed(true)} onAnchor={setAnchor} />
         </Suspense>
       </SceneBoundary>}
     </div>

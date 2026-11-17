@@ -10,6 +10,6 @@ export default function Disc({ track, size = 44 }) {
     </span>;
   }
   return <span className="disc" style={{ '--size': `${size}px` }} aria-hidden="true">
-    {track?.artworkUrl && <img src={track.artworkUrl} alt="" loading="lazy" onError={event => { event.currentTarget.hidden = true; }} />}
+    {track?.artworkUrl && <img src={track.artworkUrl} alt="" loading="lazy" decoding="async" onError={event => { event.currentTarget.hidden = true; }} />}
   </span>;
 }

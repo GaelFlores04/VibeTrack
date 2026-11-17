@@ -7,6 +7,7 @@ import { focusableElements, installKeyboardNavigation } from '../src/shared/keyb
 import MoodCarousel from '../src/features/moods/MoodCarousel';
 import Autocomplete from '../src/shared/components/Autocomplete';
 import { MiniPlayer } from '../src/features/player/PlayerProvider';
+import PlayerStage from '../src/features/player/PlayerStage';
 
 function fixture(markup, positions = {}) {
   const dom = new JSDOM(`<body>${markup}</body>`, { url: 'http://localhost/', pretendToBeVisual: true });
@@ -194,4 +195,31 @@ test('la cola abierta por teclado recibe el foco y Escape lo devuelve a su botó
     assert.equal(f.document.activeElement, toggle);
     assert.equal(toggle.getAttribute('aria-expanded'), 'false');
   } finally { await f.unmount(); }
+});
+
+test('la escena deja de girar fuera de pantalla o en una pestaña oculta', async () => {
+  const previousObserver = globalThis.IntersectionObserver;
+  let visibility;
+  let disconnected = false;
+  globalThis.IntersectionObserver = class {
+    constructor(callback) { visibility = callback; }
+    observe() {}
+    disconnect() { disconnected = true; }
+  };
+  const track = { id: 'a', title: 'Música', artist: 'Artista', previewUrl: '/a' };
+  const f = await mount(<PlayerStage tracks={[track]} selected={track} playing reduced={false} onPick={() => {}} label="Reproductor" />);
+  try {
+    assert.ok(f.document.querySelector('.is-spinning'));
+    await act(async () => visibility([{ isIntersecting: false }]));
+    assert.equal(f.document.querySelector('.is-spinning'), null);
+    await act(async () => visibility([{ isIntersecting: true }]));
+    assert.ok(f.document.querySelector('.is-spinning'));
+    Object.defineProperty(f.document, 'visibilityState', { configurable: true, value: 'hidden' });
+    await act(async () => f.document.dispatchEvent(new f.dom.window.Event('visibilitychange')));
+    assert.equal(f.document.querySelector('.is-spinning'), null);
+  } finally {
+    await f.unmount();
+    globalThis.IntersectionObserver = previousObserver;
+  }
+  assert.equal(disconnected, true);
 });

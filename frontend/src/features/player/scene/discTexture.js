@@ -5,7 +5,8 @@ import '@fontsource/permanent-marker/400.css';
 const SIZE = 1024;
 const R = SIZE / 2;
 const cache = new Map();
-const MAX_CACHED = 40;
+// Caben la tanda actual y la siguiente sin retener 40 texturas de 1024 px en móviles.
+const MAX_CACHED = 16;
 
 // Una canción sin preview se muestra como CD-R virgen con su nombre a rotulador.
 export { isBlankTrack as isBlank } from '../trackState';

@@ -174,6 +174,12 @@ Favoritos, calificaciones, historial, estadísticas, CRUD restante, permisos por
 
 Repositorio: https://github.com/GaelFlores04/VibeTrack.git
 
+## Publicación web en Render Free
+
+El proyecto incluye `Dockerfile` y `render.yaml` para servir frontend y API bajo una sola URL HTTPS, accesible desde el navegador sin instalar una app. Consulta [la guía de despliegue](docs/DESPLIEGUE_RENDER.md) para conectar Render, configurar Atlas y publicar desde `mejora-algoritmo`.
+
+`npm run build` verifica los presupuestos de descarga; `npm run check:production` prueba el servidor compilado en un proceso local aislado. `npm start` inicia la aplicación compilada con la configuración del entorno.
+
 ## Si una credencial se expuso
 
 El dueño debe rotar la contraseña del usuario de Atlas, regenerar la clave de Last.fm
