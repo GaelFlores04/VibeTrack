@@ -1,5 +1,12 @@
 # VibeTrack
 
+> **Estás viendo la primera entrega histórica (`base-funcional`).**
+> El desarrollo actual está en [`mejora-algoritmo`](https://github.com/GaelFlores04/VibeTrack/tree/mejora-algoritmo): recomendaciones personalizadas, cuentas, integración opcional con Spotify y diseño de estudio analógico.
+>
+> Consulta el [README actualizado](https://github.com/GaelFlores04/VibeTrack/blob/mejora-algoritmo/README.md), la [bitácora de IA](https://github.com/GaelFlores04/VibeTrack/blob/mejora-algoritmo/docs/BITACORA_IA.md) y el [diario de decisiones](https://github.com/GaelFlores04/VibeTrack/blob/mejora-algoritmo/docs/DIARIO_DECISIONES.md).
+>
+> El contenido siguiente describe únicamente esta primera entrega. Sus resultados de verificación son históricos.
+
 Aplicación web para descubrir música según tu estado de ánimo. React + Vite, NestJS + TypeScript y conexión preparada para MongoDB.
 
 ## Primera entrega
