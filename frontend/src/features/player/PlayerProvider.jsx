@@ -138,10 +138,17 @@ export function PlayerProvider({ children }) {
     if (position >= 0) setIndex(position);
   }, [source?.key]);
 
-  const toggle = useCallback(() => {
+  const toggle = useCallback(async () => {
     const element = audio.current;
     if (!element || !track) return;
     if (engineRef.current === 'spotify') { if (status === 'playing') spotifyRef.current.pause(); else spotifyRef.current.resume(); return; }
+    // Una cola restaurada precarga el preview; al pulsar Play, Spotify listo tiene prioridad.
+    const sp = spotifyRef.current;
+    if (element.paused && sp.ready) {
+      await sp.match([track]).catch(() => {});
+      if (state.current.queue[state.current.index]?.id !== track.id) return;
+      if (sp.uriFor(track.id)) { void start(queue, index); return; }
+    }
     if (!element.src || element.src !== new URL(track.previewUrl, location.href).href) { void start(queue, index); return; }
     if (element.paused) element.play().catch(() => setError('No se pudo reproducir el preview.')); else element.pause();
   }, [track, queue, index, start, status]);
@@ -267,7 +274,6 @@ export function MiniPlayer({ track, queue, index, status, time, volume, setVolum
         </button>
       </li>)}</ol>
       {status === 'ended' && <p role="status">Fin de la cola. {endAction ? <button type="button" className="primary" onClick={() => { setExpanded(false); endAction.run(); }}>{endAction.label}</button> : away && <Link to={source.path}>Volver a {source.label}</Link>}</p>}
-      <label className="mini-volume"><Icon name="volume" /> Volumen <input type="range" min="0" max="1" step="0.05" value={volume} style={{ '--fill': `${volume * 100}%` }} onChange={event => setVolume(Number(event.target.value))} /></label>
       <p className="mini-hint">Atajos: Espacio pausa o continúa · Mayús + flechas cambia de canción.</p>
     </div>}
     <div className="mini-bar">
@@ -276,6 +282,7 @@ export function MiniPlayer({ track, queue, index, status, time, volume, setVolum
         <strong>{track.title}</strong>
         <span>{track.artist}{engine === 'spotify' && ' · completa en Spotify'}</span>
       </div>
+      <label className="mini-volume"><Icon name="volume" /><span className="visually-hidden">Volumen</span><input type="range" min="0" max="1" step="0.05" value={volume} style={{ '--fill': `${volume * 100}%` }} onChange={event => setVolume(Number(event.target.value))} /></label>
       <div className="mini-controls" data-keyboard-group="linear">
         <button type="button" className="icon" onClick={() => step(-1)} disabled={!hasPrevious} aria-label="Canción anterior"><Icon name="previous" /></button>
         <button type="button" className="icon primary" onClick={toggle} aria-label={playing ? 'Pausar' : 'Reproducir'}><Icon name={playing ? 'pause' : 'play'} /></button>

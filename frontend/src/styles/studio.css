@@ -340,7 +340,7 @@ a.on-air:hover .on-air-track strong { color: var(--amber-strong); }
 .session-layout {
   display: grid; gap: 1rem 2rem; margin-top: 1.1rem;
   grid-template-columns: minmax(0, 1.55fr) minmax(320px, .95fr);
-  grid-template-areas: "stage sheet" "transport sheet";
+  grid-template-areas: "stage sheet" "transport sheet"; grid-template-rows: auto 1fr;
   align-items: start;
 }
 .rec-stage { grid-area: stage; position: relative; min-width: 0; }
@@ -463,7 +463,7 @@ a.on-air:hover .on-air-track strong { color: var(--amber-strong); }
 /* ===== Monitor (minirreproductor en las demás salas) ===== */
 .mini-player { position: sticky; bottom: 0; z-index: 15; padding: 0 clamp(8px, 2vw, 24px) 12px; }
 .mini-shell { max-width: 1392px; margin: 0 auto; border-radius: 10px; border: 1px solid rgba(233, 220, 196, .18); background: linear-gradient(160deg, #3e2516, #22150d); box-shadow: inset 0 1px 0 rgba(255, 210, 160, .18), 0 -6px 24px rgba(0, 0, 0, .55); }
-.mini-bar { padding: .6rem 1rem; display: grid; grid-template-columns: auto minmax(0, 1fr) auto minmax(160px, 1.2fr) auto; align-items: center; gap: .9rem; }
+.mini-bar { padding: .6rem 1rem; display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto minmax(0, 1.2fr) auto; align-items: center; gap: .9rem; }
 .mini-meta { display: flex; flex-direction: column; min-width: 0; }
 .mini-meta strong, .mini-meta span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .mini-meta span { font-size: .88rem; color: var(--ink-soft); }
@@ -479,7 +479,8 @@ a.on-air:hover .on-air-track strong { color: var(--amber-strong); }
 .mini-queue li[aria-current="true"] button { background: rgba(244, 162, 89, .16); border-color: rgba(244, 162, 89, .4); }
 .mini-queue .q-text { display: flex; flex-direction: column; min-width: 0; }
 .mini-queue small { color: var(--ink-soft); }
-.mini-volume { display: flex; align-items: center; gap: .6rem; max-width: 320px; margin: .2rem 0; }
+.mini-volume { display: flex; align-items: center; gap: .4rem; margin: 0; }
+.mini-volume input { width: 80px; }
 .mini-hint { font-size: .84rem; color: var(--ink-soft); }
 
 /* ===== Salas secundarias: cabina, consola, perchero, cuadro eléctrico ===== */
@@ -565,6 +566,7 @@ a.on-air:hover .on-air-track strong { color: var(--amber-strong); }
   .mini-shell:not(:has(.mini-queue)) .mini-progress, .mini-shell:not(:has(.mini-queue)) .mini-extra > :not([aria-controls="player-queue"]) { display: none; }
   .mini-shell:not(:has(.mini-queue)) .mini-extra { grid-column: auto; order: 0; }
   .mini-controls button[aria-label="Canción anterior"] { display: none; }
+  .mini-volume { grid-column: 1 / -1; order: 5; }
   .mini-progress { grid-column: 1 / -1; order: 3; }
   .mini-extra { grid-column: 1 / -1; order: 4; justify-content: space-between; flex-wrap: wrap; row-gap: .4rem; }
 }

@@ -7,7 +7,8 @@ import { MemoryRouter } from 'react-router-dom';
 import { focusableElements, installKeyboardNavigation } from '../src/shared/keyboardNavigation';
 import MoodShelf from '../src/features/moods/MoodShelf';
 import Autocomplete from '../src/shared/components/Autocomplete';
-import { MiniPlayer } from '../src/features/player/PlayerProvider';
+import { AuthProvider } from '../src/features/auth/AuthProvider';
+import { PlayerProvider, usePlayer, MiniPlayer } from '../src/features/player/PlayerProvider';
 import PlayerStage from '../src/features/player/PlayerStage';
 import PlaybackDisc from '../src/shared/components/PlaybackDisc';
 
@@ -291,4 +292,50 @@ test('el disco conserva una caja visible al quedar dentro del contenedor de anim
     assert.equal(disc.style.getPropertyValue('--size'), '60px');
     assert.equal(disc.querySelector('img').getAttribute('src'), track.artworkUrl);
   } finally { await f.unmount(); }
+});
+
+
+test('Play de una cola restaurada prioriza Spotify listo y conserva preview si no hay coincidencia', async () => {
+  for (const matched of [true, false]) {
+    const names = ['localStorage', 'sessionStorage', 'location', 'HTMLElement', 'fetch'];
+    const previous = Object.fromEntries(names.map(name => [name, Object.getOwnPropertyDescriptor(globalThis, name)]));
+    let control, previewPlays = 0, spotifyPlays = 0, matchCalls = 0;
+    const track = { id: 'deezer:42', title: 'Prueba', artist: 'Artista', previewUrl: 'http://localhost/preview.mp3', durationMs: 180000 };
+    function Probe() { control = usePlayer(); return null; }
+    let f;
+    try {
+      f = await mount(<AuthProvider><PlayerProvider><Probe /></PlayerProvider></AuthProvider>, fixture => {
+        for (const name of names.filter(name => name !== 'fetch')) Object.defineProperty(globalThis, name, { configurable: true, value: fixture.dom.window[name] });
+        sessionStorage.setItem('vibetrack:player', JSON.stringify({ queue: [track], index: 0, source: { key: 'fixture', path: '/' } }));
+        const media = fixture.dom.window.HTMLMediaElement.prototype;
+        media.pause = () => {}; media.load = () => {};
+        media.play = async () => { previewPlays++; };
+        fixture.dom.window.Spotify = { Player: class {
+          listeners = {};
+          addListener(name, callback) { this.listeners[name] = callback; }
+          connect() { this.listeners.ready({ device_id: 'test-device' }); return Promise.resolve(true); }
+          disconnect() {} setVolume() {} pause() {} activateElement() { return Promise.resolve(); }
+        } };
+        globalThis.fetch = async url => {
+          if (String(url).includes('/me/player/play')) { spotifyPlays++; return { ok: true }; }
+          let body = {};
+          if (url === '/api/auth/refresh') body = { id: 'fixture' };
+          if (url === '/api/spotify/status') body = { connected: true };
+          if (url === '/api/spotify/token') body = { accessToken: 'test-token' };
+          if (url === '/api/spotify/match') { matchCalls++; body = { [track.id]: matched ? 'spotify:track:42' : null }; }
+          return { ok: true, json: async () => body };
+        };
+      });
+      assert.equal(control.spotify.ready, true);
+      assert.equal(f.document.querySelector('audio').src, track.previewUrl, 'el preview ya está precargado');
+      await act(async () => { await control.toggle(); });
+      assert.equal(matchCalls, 1);
+      assert.equal(spotifyPlays, matched ? 1 : 0);
+      assert.equal(previewPlays, matched ? 0 : 1);
+      assert.equal(control.engine, matched ? 'spotify' : 'preview');
+    } finally {
+      if (f) await f.unmount();
+      for (const name of names) { if (previous[name]) Object.defineProperty(globalThis, name, previous[name]); else delete globalThis[name]; }
+    }
+  }
 });
