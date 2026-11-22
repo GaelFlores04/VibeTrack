@@ -6,24 +6,28 @@
     "dev": "npm run build && concurrently -k -n types,server \"tsc -p tsconfig.json --watch --preserveWatchOutput\" \"node --watch dist/main.js\"",
     "build": "tsc -p tsconfig.json",
     "start": "node dist/main.js",
-    "test": "tsx --test test/*.test.ts",
+    "test": "tsx --tsconfig tsconfig.test.json --test test/*.test.ts",
     "check:services": "node scripts/check-services.cjs"
   },
   "dependencies": {
     "@nestjs/common": "^11.1.0",
     "@nestjs/core": "^11.1.0",
+    "@nestjs/jwt": "^12.0.5",
     "@nestjs/platform-express": "^11.1.0",
     "@nestjs/throttler": "^6.4.0",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.2",
+    "compression": "^1.8.2",
     "dotenv": "^16.6.0",
+    "helmet": "^8.3.0",
     "mongoose": "^8.18.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2"
   },
   "devDependencies": {
+    "@types/compression": "^1.8.1",
     "@types/node": "^24.0.0",
-    "typescript": "^5.9.0",
-    "tsx": "^4.20.0"
+    "tsx": "^4.20.0",
+    "typescript": "^5.9.0"
   }
 }

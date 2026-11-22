@@ -1,0 +1,410 @@
+{
+  "checkedAt": "2026-11-17T08:06:04.930Z",
+  "policyVersion": 3,
+  "note": "Convenience sample, not an accuracy benchmark. Only numeric lyric profiles; no lyrics or user data stored.",
+  "tracks": [
+    {
+      "artist": "Daft Punk",
+      "title": "The Game of Love",
+      "mood": "feliz",
+      "isrc": "USQX91300102",
+      "tags": [],
+      "audio": {
+        "valence": 0.682,
+        "energy": 0.5,
+        "danceability": 0.712,
+        "acousticness": 0.825,
+        "tempo": 90.039
+      },
+      "lyrics": {
+        "words": 148,
+        "heartbreak": 0,
+        "sadness": 0,
+        "love": 0,
+        "party": 0,
+        "joy": 0,
+        "motivation": 0,
+        "threat": 0,
+        "substance": 0
+      },
+      "assessment": {
+        "score": 0,
+        "reason": "insufficient-evidence",
+        "evidence": [
+          "audio"
+        ]
+      }
+    },
+    {
+      "artist": "Arctic Monkeys",
+      "title": "This House is a Circus",
+      "mood": "feliz",
+      "isrc": "GBCEL0700070",
+      "tags": [],
+      "audio": {
+        "valence": 0.658,
+        "energy": 0.844,
+        "danceability": 0.476,
+        "acousticness": 0.0000181,
+        "tempo": 155.322
+      },
+      "lyrics": {
+        "words": 302,
+        "heartbreak": 0,
+        "sadness": 0,
+        "love": 0.328,
+        "party": 0,
+        "joy": 0,
+        "motivation": 0,
+        "threat": 0.328,
+        "substance": 0
+      },
+      "assessment": {
+        "score": 0,
+        "reason": "insufficient-evidence",
+        "evidence": [
+          "audio"
+        ]
+      }
+    },
+    {
+      "artist": "Daft Punk",
+      "title": "The Grid",
+      "mood": "triste",
+      "isrc": "USWD11054877",
+      "tags": [],
+      "audio": {
+        "valence": 0.0645,
+        "energy": 0.53,
+        "danceability": 0.556,
+        "acousticness": 0.307,
+        "tempo": 102.018
+      },
+      "lyrics": {
+        "words": 49,
+        "heartbreak": 0,
+        "sadness": 0,
+        "love": 0,
+        "party": 0,
+        "joy": 0,
+        "motivation": 0,
+        "threat": 0,
+        "substance": 0
+      },
+      "assessment": {
+        "score": 0,
+        "reason": "insufficient-evidence",
+        "evidence": [
+          "audio"
+        ]
+      }
+    },
+    {
+      "artist": "Thomas Bangalter",
+      "title": "Bangalter: Mythologies: X. L'Accouchement",
+      "mood": "triste",
+      "isrc": "GBPFW2200264",
+      "tags": [],
+      "audio": {
+        "valence": 0.0336,
+        "energy": 0.148,
+        "danceability": 0.149,
+        "acousticness": 0.895,
+        "tempo": 79.181
+      },
+      "lyrics": null,
+      "assessment": {
+        "score": 0,
+        "reason": "insufficient-evidence",
+        "evidence": [
+          "audio"
+        ]
+      }
+    },
+    {
+      "artist": "Foster the People",
+      "title": "Pumped Up Kicks",
+      "mood": "feliz",
+      "isrc": "USSM11002931",
+      "tags": [
+        "indie",
+        "indie pop",
+        "catchy",
+        "summer",
+        "happy",
+        "alternative",
+        "pop"
+      ],
+      "audio": {
+        "valence": 0.965,
+        "energy": 0.711,
+        "danceability": 0.733,
+        "acousticness": 0.143,
+        "tempo": 127.975
+      },
+      "lyrics": {
+        "words": 425,
+        "heartbreak": 0,
+        "sadness": 0,
+        "love": 0,
+        "party": 0,
+        "joy": 0,
+        "motivation": 0,
+        "threat": 0.756,
+        "substance": 0
+      },
+      "assessment": {
+        "score": 0,
+        "reason": "opposing-lyrics",
+        "evidence": []
+      }
+    },
+    {
+      "artist": "Third Eye Blind",
+      "title": "Semi-Charmed Life",
+      "mood": "feliz",
+      "isrc": "USEE19701203",
+      "tags": [
+        "90s",
+        "alternative rock",
+        "rock",
+        "alternative",
+        "happy",
+        "third eye blind",
+        "pop rock"
+      ],
+      "audio": {
+        "valence": 0.701,
+        "energy": 0.864,
+        "danceability": 0.64,
+        "acousticness": 0.00832,
+        "tempo": 102.026
+      },
+      "lyrics": {
+        "words": 518,
+        "heartbreak": 0.556,
+        "sadness": 0,
+        "love": 0,
+        "party": 0,
+        "joy": 0.143,
+        "motivation": 0.143,
+        "threat": 0,
+        "substance": 0.074
+      },
+      "assessment": {
+        "score": 0,
+        "reason": "opposing-lyrics",
+        "evidence": []
+      }
+    },
+    {
+      "artist": "Pharrell Williams",
+      "title": "Happy",
+      "mood": "feliz",
+      "isrc": "USQ4E1300686",
+      "tags": [],
+      "audio": {
+        "valence": 0.962,
+        "energy": 0.756,
+        "danceability": 0.661,
+        "acousticness": 0.293,
+        "tempo": 159.944
+      },
+      "lyrics": {
+        "words": 389,
+        "heartbreak": 0,
+        "sadness": 0,
+        "love": 0,
+        "party": 0,
+        "joy": 0.949,
+        "motivation": 0,
+        "threat": 0,
+        "substance": 0
+      },
+      "assessment": {
+        "score": 0.95796,
+        "reason": "compatible",
+        "evidence": [
+          "lyrics",
+          "audio"
+        ]
+      }
+    },
+    {
+      "artist": "Coldplay",
+      "title": "Fix You",
+      "mood": "triste",
+      "isrc": "GBAYE0500605",
+      "tags": [
+        "alternative",
+        "rock",
+        "Coldplay",
+        "britpop",
+        "alternative rock",
+        "british",
+        "beautiful"
+      ],
+      "audio": {
+        "valence": 0.124,
+        "energy": 0.417,
+        "danceability": 0.209,
+        "acousticness": 0.164,
+        "tempo": 138.178
+      },
+      "lyrics": {
+        "words": 182,
+        "heartbreak": 0.808,
+        "sadness": 0,
+        "love": 0.197,
+        "party": 0,
+        "joy": 0,
+        "motivation": 0,
+        "threat": 0,
+        "substance": 0
+      },
+      "assessment": {
+        "score": 0.95232,
+        "reason": "compatible",
+        "evidence": [
+          "lyrics",
+          "audio"
+        ]
+      }
+    },
+    {
+      "artist": "John Legend",
+      "title": "All of Me",
+      "mood": "romantico",
+      "isrc": "USSM11303954",
+      "tags": [
+        "rnb",
+        "pop",
+        "2014",
+        "Love",
+        "soul",
+        "r&b",
+        "beautiful"
+      ],
+      "audio": {
+        "valence": 0.335,
+        "energy": 0.251,
+        "danceability": 0.426,
+        "acousticness": 0.922,
+        "tempo": 121.936
+      },
+      "lyrics": {
+        "words": 374,
+        "heartbreak": 0.148,
+        "sadness": 0,
+        "love": 0,
+        "party": 0,
+        "joy": 0,
+        "motivation": 0,
+        "threat": 0,
+        "substance": 0
+      },
+      "assessment": {
+        "score": 0.9600000000000001,
+        "reason": "compatible",
+        "evidence": [
+          "track-tags",
+          "audio"
+        ]
+      }
+    },
+    {
+      "artist": "Jack Johnson",
+      "title": "Banana Pancakes",
+      "mood": "relajado",
+      "isrc": "USMC60400032",
+      "tags": [],
+      "audio": {
+        "valence": 0.651,
+        "energy": 0.381,
+        "danceability": 0.819,
+        "acousticness": 0.627,
+        "tempo": 114.222
+      },
+      "lyrics": {
+        "words": 350,
+        "heartbreak": 0,
+        "sadness": 0,
+        "love": 0,
+        "party": 0,
+        "joy": 0,
+        "motivation": 0,
+        "threat": 0,
+        "substance": 0
+      },
+      "assessment": {
+        "score": 0.92,
+        "reason": "compatible",
+        "evidence": [
+          "audio"
+        ]
+      }
+    },
+    {
+      "artist": "Yiruma",
+      "title": "River Flows in You",
+      "mood": "cansado",
+      "isrc": "KRA031103194",
+      "tags": [],
+      "audio": {
+        "valence": 0.346,
+        "energy": 0.292,
+        "danceability": 0.287,
+        "acousticness": 0.968,
+        "tempo": 145.703
+      },
+      "lyrics": null,
+      "assessment": {
+        "score": 0.92,
+        "reason": "compatible",
+        "evidence": [
+          "audio"
+        ]
+      }
+    },
+    {
+      "artist": "Eminem",
+      "title": "Lose Yourself",
+      "mood": "motivado",
+      "isrc": "USIR10211559",
+      "tags": [
+        "rap",
+        "Hip-Hop",
+        "Eminem",
+        "Soundtrack",
+        "hip hop",
+        "8 Mile",
+        "00s"
+      ],
+      "audio": {
+        "valence": 0.0612,
+        "energy": 0.744,
+        "danceability": 0.692,
+        "acousticness": 0.00868,
+        "tempo": 171.374
+      },
+      "lyrics": {
+        "words": 841,
+        "heartbreak": 0.069,
+        "sadness": 0.108,
+        "love": 0,
+        "party": 0,
+        "joy": 0,
+        "motivation": 0.046,
+        "threat": 0,
+        "substance": 0
+      },
+      "assessment": {
+        "score": 0.91464,
+        "reason": "compatible",
+        "evidence": [
+          "audio"
+        ]
+      }
+    }
+  ]
+}

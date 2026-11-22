@@ -6,3 +6,11 @@ dist/
 coverage/
 *.log
 .DS_Store
+
+*.rar
+*.zip
+
+# El proyecto usa npm (package-lock.json + workspaces); evitar lockfiles de otros gestores.
+pnpm-lock.yaml
+pnpm-workspace.yaml
+yarn.lock

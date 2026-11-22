@@ -1,0 +1,121 @@
+{
+  "checkedAt": "2026-11-17T08:16:48.969Z",
+  "note": "Live sample after audio-first pruning and adaptive retrieval, with fixed ranking jitter, no user data or MongoDB; timing varies with providers.",
+  "preferences": {
+    "artists": [
+      "Daft Punk",
+      "Arctic Monkeys"
+    ],
+    "genres": []
+  },
+  "results": [
+    {
+      "mood": "feliz",
+      "attempts": [
+        {
+          "attempt": 1,
+          "status": "retry",
+          "count": 3,
+          "elapsedMs": 13438
+        },
+        {
+          "attempt": 2,
+          "status": "retry",
+          "count": 4,
+          "elapsedMs": 27941
+        },
+        {
+          "attempt": 3,
+          "status": "ready",
+          "count": 7,
+          "elapsedMs": 50789
+        }
+      ],
+      "tracks": [
+        {
+          "title": "One More Time",
+          "artist": "Daft Punk",
+          "id": "deezer:3135553"
+        },
+        {
+          "title": "Move Your Feet",
+          "artist": "Junior Senior",
+          "id": "lastfm:https://www.last.fm/music/Junior%20Senior/_/Move%20Your%20Feet"
+        },
+        {
+          "title": "Dancing in the Moonlight",
+          "artist": "Toploader",
+          "id": "deezer:10434104"
+        },
+        {
+          "title": "I'm Gonna Be (500 Miles)",
+          "artist": "The Proclaimers",
+          "id": "deezer:3109247"
+        },
+        {
+          "title": "Hey, Soul Sister",
+          "artist": "Train",
+          "id": "deezer:563683852"
+        },
+        {
+          "title": "Sunshine, Lollipops And Rainbows",
+          "artist": "Lesley Gore",
+          "id": "deezer:131743194"
+        },
+        {
+          "title": "Happy (From \"Despicable Me 2\")",
+          "artist": "Pharrell Williams",
+          "id": "deezer:701326562"
+        }
+      ]
+    },
+    {
+      "mood": "triste",
+      "attempts": [
+        {
+          "attempt": 1,
+          "status": "ready",
+          "count": 7,
+          "elapsedMs": 12930
+        }
+      ],
+      "tracks": [
+        {
+          "title": "Matilda",
+          "artist": "Harry Styles",
+          "id": "deezer:1756569627"
+        },
+        {
+          "title": "drivers license",
+          "artist": "Olivia Rodrigo",
+          "id": "deezer:1378342592"
+        },
+        {
+          "title": "Cry",
+          "artist": "Cigarettes After Sex",
+          "id": "deezer:781948852"
+        },
+        {
+          "title": "Cancer",
+          "artist": "My Chemical Romance",
+          "id": "deezer:676582"
+        },
+        {
+          "title": "One Last Time",
+          "artist": "Ariana Grande",
+          "id": "lastfm:https://www.last.fm/music/Ariana%20Grande/_/One%20Last%20Time"
+        },
+        {
+          "title": "To Bid You Farewell",
+          "artist": "Opeth",
+          "id": "deezer:2075207527"
+        },
+        {
+          "title": "For My Fallen Angel",
+          "artist": "My Dying Bride",
+          "id": "deezer:1543480"
+        }
+      ]
+    }
+  ]
+}

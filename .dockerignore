@@ -1,0 +1,14 @@
+.git
+**/node_modules
+**/dist
+**/.env
+**/.env.*
+**/.impeccable
+**/coverage
+**/*.log
+**/*.rar
+**/*.zip
+backend/test
+frontend/test
+docs
+contexto
