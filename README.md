@@ -96,4 +96,3 @@ La aplicación se distribuye como sitio web accesible por enlace. La configuraci
 - [Auditoría y pendientes históricos](docs/AUDITORIA_RESUELTA.md).
 
 Los registros históricos pueden describir fases anteriores. No equivalen a una certificación del estado actual ni de los servicios externos.
-

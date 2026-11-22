@@ -88,4 +88,3 @@ Las entradas DEC-001 a DEC-005 fueron reconstruidas el **2026-11-22** a partir d
 - Responsable o aprobación (si consta):
 - Sustituye a / sustituida por:
 ```
-

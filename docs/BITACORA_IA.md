@@ -70,4 +70,3 @@ Consultar cada cambio con `git show <hash>`. Las fechas corresponden al campo de
 - Pendientes:
 - Commit / PR o cambios locales:
 ```
-
