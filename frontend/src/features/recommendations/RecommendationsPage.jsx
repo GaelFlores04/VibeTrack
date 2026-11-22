@@ -6,6 +6,7 @@ import PlayerStage from '../player/PlayerStage';
 import { formatDuration, isBlankTrack, reasonTag } from '../player/trackState';
 import Disc from '../../shared/components/Disc';
 import PlaybackDisc from '../../shared/components/PlaybackDisc';
+import { moodPresentation } from '../moods/moodPresentation';
 import Icon from '../../shared/components/Icon';
 import ActionLink from '../../shared/components/ActionLink';
 import { useReducedMotion } from '../../shared/hooks/useReducedMotion';
@@ -39,7 +40,7 @@ function MoodRecommendations({ mood, user }) {
   const tracks = batch?.tracks || [];
   const moodName = moodNames[mood] || mood;
   const personalized = batch ? batch.mode === 'personalized' : Boolean(user?.preferences);
-  const source = useMemo(() => page ? { key: `mood:${mood}:${page}`, label: `${moodName} · tanda ${page}`, path: `/recomendaciones/${mood}${page > 1 ? `?tanda=${page}` : ''}` } : null, [mood, moodName, page]);
+  const source = useMemo(() => page ? { key: `mood:${mood}:${page}`, label: `${moodName} · toma ${page}`, path: `/recomendaciones/${mood}${page > 1 ? `?tanda=${page}` : ''}` } : null, [mood, moodName, page]);
   const owns = !!source && player.source?.key === source.key;
 
   // Selección: la canción que suena si esta tanda es la cola; si no, la primera.
@@ -126,65 +127,87 @@ function MoodRecommendations({ mood, user }) {
   }
   const move = direction => { const next = tracks[selectedIndex + direction]; if (next) pick(next); };
 
-  const lcdState = !selected ? 'VACÍO' : blank ? 'SIN PREVIEW' : !isLoaded ? (full ? 'COMPLETA' : 'LISTO') : player.status === 'loading' ? 'CARGANDO' : playing ? 'PLAY' : 'PAUSA';
+  // Estado de cada pista en la hoja: sólo se marca "escuchada" lo que de verdad sonó en esta toma.
+  const [heard, setHeard] = useState(() => new Set());
+  useEffect(() => {
+    if (owns && player.status === 'playing' && player.track) setHeard(current => current.has(player.track.id) ? current : new Set(current).add(player.track.id));
+  }, [owns, player.status, player.track?.id]);
+  useEffect(() => { setHeard(new Set()); }, [page]);
+  const stateOf = track => {
+    if (isBlankTrack(track)) return { label: 'Sin preview', tone: 'warn' };
+    if (track.id === selected?.id) return playing ? { label: 'Sonando', tone: 'live' } : { label: 'En el plato', tone: 'set' };
+    if (heard.has(track.id)) return { label: 'Escuchada', tone: 'done' };
+    return { label: 'En cola', tone: 'queue' };
+  };
+
+  const plateState = !selected ? 'Plato vacío' : blank ? 'Sin preview' : !isLoaded ? (full ? 'Completa en Spotify' : 'Lista') : player.status === 'loading' ? 'Bajando la aguja' : playing ? 'Sonando' : 'En pausa';
   const current = isLoaded ? player.time.current : 0;
   const duration = isLoaded && Number.isFinite(player.time.duration) && player.time.duration ? player.time.duration : full ? (selected.durationMs || 30000) / 1000 : 30;
-  const stageLabel = selected ? `Reproductor con el CD de ${selected.title}, de ${selected.artist}. ${blank ? 'Sin preview.' : playing ? 'Sonando.' : 'Detenido.'} La pila tiene ${Math.max(0, tracks.length - 1)} CDs más.` : 'Reproductor vacío.';
+  const stageLabel = selected ? `Tocadiscos con el vinilo de ${selected.title}, de ${selected.artist}. ${blank ? 'Sin preview.' : playing ? 'Sonando.' : 'Detenido.'} En la caja quedan ${Math.max(0, tracks.length - 1)} discos.` : 'Tocadiscos vacío.';
+  const providerName = selected?.provider === 'itunes' ? 'iTunes' : selected?.provider === 'lastfm' ? 'Last.fm' : 'Deezer';
 
-  return <div className="rec-page">
-    <div className="rec-head">
-      <div>
-        <h1>{moodName}</h1>
-        <p className="lede">{personalized ? 'Sobre todo tus artistas, más similares y tus géneros, y algún descubrimiento que encaje con este mood.' : 'Canciones conocidas para acompañar este mood.'} <Link to={user ? '/preferencias' : '/registro'}>{user ? 'Cambiar preferencias' : 'Personalizar con una cuenta'}</Link></p>
+  return <div className="rec-page session" style={{ '--sticker': moodPresentation(mood).color }}>
+    <header className="session-head">
+      <div className="session-title">
+        <h1><span className="title-sticker" aria-hidden="true" />{moodName}</h1>
+        <p className="lede">{personalized ? 'Sobre todo tus artistas, más similares y tus géneros, y algún descubrimiento que encaje con este mood.' : 'Canciones conocidas para acompañar este mood.'} <Link to={user ? '/preferencias' : '/registro'}>{user ? 'Ajustar en la consola' : 'Personalizar con una cuenta'}</Link></p>
       </div>
-      <nav className="batch-nav" aria-label="Tandas">
-        <button type="button" disabled={resource.loading || page <= 1} onClick={resource.previous}><span className="long">Tanda anterior</span><span className="short">Anterior</span></button>
-        {page > 0 && <span className="lcd-text batch-count" aria-live="polite">Tanda {page}</span>}
+      <nav className="take-nav" aria-label="Tomas de la sesión">
+        <button type="button" disabled={resource.loading || page <= 1} onClick={resource.previous}><Icon name="previous" size={18} /><span className="long">Toma anterior</span><span className="short">Anterior</span></button>
+        {page > 0 && <span className="take-count" aria-live="polite">Toma <strong>{page}</strong></span>}
         <button type="button" className="primary" disabled={resource.loading || (resource.exhausted && !resource.hasNewer)} onClick={resource.next}>
-          {resource.loading ? 'Preparando…' : resource.hasNewer ? 'Siguiente tanda' : resource.message || resource.error ? 'Reintentar tanda' : batch ? <><span className="long">Otras 7 canciones</span><span className="short">Otras 7</span></> : 'Preparar selección'}
+          {resource.loading ? 'Preparando…' : resource.hasNewer ? 'Siguiente toma' : resource.message || resource.error ? 'Reintentar toma' : batch ? <><span className="long">Otra toma · 7 nuevas</span><span className="short">Otra toma</span></> : 'Preparar sesión'}
+          {!resource.loading && <Icon name="next" size={18} />}
         </button>
       </nav>
-    </div>
+    </header>
 
-    {resource.loading && <p role="status" className="rec-status">{batch ? 'Preparando la tanda. Puedes seguir escuchando esta.' : 'Preparando 7 recomendaciones…'}</p>}
+    {resource.loading && <p role="status" className="rec-status">{batch ? 'Preparando la siguiente toma. Puedes seguir escuchando esta.' : 'Preparando la sesión: buscando 7 canciones que suenen a este mood…'}</p>}
     {resource.notice && <p role="status" className="rec-status rec-notice">{resource.notice}</p>}
     {resource.message && <p role="status" className="rec-status">{resource.message}</p>}
     {resource.error && <p role="alert" className="rec-status">{resource.error}</p>}
 
-    {batch && <div className="rec-layout">
+    {batch && <div className="session-layout">
       <section className="rec-stage" aria-labelledby="stage-title">
-        <h2 id="stage-title" ref={heading} tabIndex="-1" className="visually-hidden">{ready ? `Tanda ${batch.page}` : 'Tanda parcial'}</h2>
-        <p className="stack-count lcd-text">{tracks.length} CDs · 1 en el lector{batch.previewsPending ? ' · buscando previews' : ''}</p>
+        <h2 id="stage-title" ref={heading} tabIndex="-1" className="visually-hidden">{ready ? `Toma ${batch.page}` : 'Toma parcial'}</h2>
+        <p className={`stage-sign${playing ? ' is-lit' : ''}`} aria-hidden="true">EN EL AIRE</p>
+        <p className="stack-count">{tracks.length} discos · 1 en el plato{batch.previewsPending ? ' · buscando previews' : ''}</p>
         <PlayerStage tracks={tracks} selected={selected} playing={playing} reduced={reduced} onPick={pick} label={stageLabel}
-          lcd={selected && <div className="lcd" role="status" aria-live="off" aria-label={`Pantalla: ${selected.title}, ${lcdState.toLowerCase()}`}>
-          <span className="lcd-line">
-            <span>{String(selectedIndex + 1).padStart(2, '0')}</span>
-            {isLoaded && !blank && <Icon name={playing ? 'play' : 'pause'} size={13} />}
-            <span className="lcd-title">{selected.title.toUpperCase()}</span>
-          </span>
-          <span className="lcd-line lcd-sub"><span>{lcdState}</span><span>{blank ? '--:--' : `${formatTime(current)} / ${formatTime(duration)}`}</span></span>
-        </div>} />
+          lcd={selected && <div className="plate" role="status" aria-live="off" aria-label={`Placa: pista ${selectedIndex + 1}, ${selected.title}, ${plateState.toLowerCase()}`}>
+            <span className="plate-line">
+              <span className="plate-num">{String(selectedIndex + 1).padStart(2, '0')}</span>
+              <span className="plate-title">{selected.title}</span>
+            </span>
+            <span className="plate-line plate-sub"><span>{plateState}</span><span>{blank ? '--:--' : `${formatTime(current)} / ${formatTime(duration)}`}</span></span>
+          </div>} />
       </section>
 
-      <section className="rec-list" aria-labelledby="list-title">
-        <h2 id="list-title">Sigue en la tanda</h2>
-        {user ? <p className="feedback-help">Tus valoraciones afinan las próximas tandas de este mood. Puedes cambiarlas o quitarlas sin interrumpir la música.</p> : <p className="feedback-help"><Link to="/registro">Crea una cuenta</Link> para guardar likes y dislikes por mood.</p>}
+      <section className="session-sheet" aria-labelledby="list-title">
+        <div className="sheet-clip" aria-hidden="true" />
+        <h2 id="list-title">Hoja de sesión</h2>
+        <p className="sheet-meta"><span>{moodName}</span><span>Toma {page || 1}</span><span>{tracks.length} pistas</span></p>
+        {user ? <p className="feedback-help">Marca si cada pista encaja con el mood: afina las próximas tomas, sin cortar la música.</p> : <p className="feedback-help"><Link to="/registro">Crea una cuenta</Link> para guardar si cada pista encaja con el mood.</p>}
         {feedback.loading && <p role="status">Consultando tus valoraciones…</p>}
         {feedback.error && <p role="alert">{feedback.error} <button type="button" onClick={feedback.retry} disabled={Object.values(feedback.pending).some(Boolean)}>Consultar valoraciones de nuevo</button></p>}
         <p className="feedback-message" role="status">{feedback.message}</p>
-        <ol ref={list} data-keyboard-group="linear" aria-label="Canciones de la tanda">
+        <ol ref={list} data-keyboard-group="linear" aria-label="Pistas de la toma">
           {tracks.map((track, index) => {
             const isSelected = track.id === selected?.id;
             const noPreview = isBlankTrack(track);
-            return <li key={track.id} data-track-id={track.id}>
+            const state = stateOf(track);
+            return <li key={track.id} data-track-id={track.id} className={`sheet-row tone-${state.tone}`}>
               <button type="button" className={`track-row${isSelected ? ' is-selected' : ''}`} aria-current={isSelected ? 'true' : undefined} onClick={() => pick(track)}
-                aria-label={`${track.title}, de ${track.artist}. ${track.recommendationReason || ''}${noPreview ? ' Sin preview.' : ''}`}>
-                <Disc track={track} size={44} />
+                aria-label={`Pista ${index + 1}: ${track.title}, de ${track.artist}. ${state.label}. ${track.recommendationReason || ''}`}>
+                <span className="track-num">{String(index + 1).padStart(2, '0')}</span>
+                <Disc track={track} size={40} />
                 <span className="track-text">
                   <span className="track-title">{track.title}</span>
                   <span className="track-meta">{track.artist} · {reasonTag(track.recommendationReason)}</span>
                 </span>
-                <span className={`track-end lcd-text${noPreview ? ' is-warn' : ''}`}>{noPreview ? 'sin preview' : track.previewStatus === 'loading' ? '…' : formatDuration(track.durationMs) || String(index + 1).padStart(2, '0')}</span>
+                <span className="track-end">
+                  <span className="track-time">{noPreview ? '--:--' : track.previewStatus === 'loading' ? '…' : formatDuration(track.durationMs) || '0:30'}</span>
+                  <span className="track-state">{state.label}</span>
+                </span>
               </button>
               {user && <SongFeedback track={track} feedback={feedback} />}
             </li>;
@@ -194,44 +217,44 @@ function MoodRecommendations({ mood, user }) {
         {!batch.previewsPending && tracks.some(track => track.previewStatus === 'temporary_error') && <p className="list-note">El proveedor de audio no respondió. <button type="button" disabled={resource.loading} onClick={resource.refreshAudio}>Reintentar audio</button></p>}
       </section>
 
-      {selected && <section className="transport" aria-label="Controles de reproducción">
+      {selected && <section className="transport plinth-controls" aria-label="Controles del tocadiscos">
         {elsewhere && <div className="transport-elsewhere">
           <PlaybackDisc track={player.track} size={32} playing={player.status === 'playing'} />
-          <p><span className="visually-hidden">Ahora suena, de otra lista: </span><strong>{player.track.title}</strong> · {player.track.artist}{player.source?.label ? <small> — {player.source.label}</small> : null}</p>
+          <p><span className="visually-hidden">Ahora suena, de otra sesión: </span><strong>{player.track.title}</strong> · {player.track.artist}{player.source?.label ? <small> — {player.source.label}</small> : null}</p>
           <button type="button" className="icon" onClick={player.toggle} aria-label={elsewherePlaying ? 'Pausar lo que suena' : 'Continuar lo que sonaba'}><Icon name={elsewherePlaying ? 'pause' : 'play'} size={18} /></button>
           {player.source?.path && <Link to={player.source.path}>Volver</Link>}
         </div>}
         <div className="transport-now">
-          <PlaybackDisc track={selected} size={60} playing={playing} />
+          <PlaybackDisc track={selected} size={56} playing={playing} />
           <div className="transport-text">
             <p className="transport-title">{selected.title}</p>
             <p className="transport-artist">{selected.artist}</p>
             {selected.recommendationReason && <p className="transport-reason">{selected.recommendationReason}</p>}
-            {!blank && <ActionLink className="transport-link-mobile" href={selected.externalUrl} icon="external">{selected.provider === 'itunes' ? 'iTunes' : selected.provider === 'lastfm' ? 'Last.fm' : 'Deezer'}</ActionLink>}
+            {!blank && <ActionLink className="transport-link-mobile" href={selected.externalUrl} icon="external">{providerName}</ActionLink>}
           </div>
         </div>
         <div className="transport-buttons" data-keyboard-group="linear">
-          <button type="button" className="icon" onClick={() => move(-1)} disabled={selectedIndex <= 0} aria-label="Canción anterior"><Icon name="previous" /></button>
-          <button type="button" className="icon primary play" onClick={togglePlay} disabled={blank || !player.playable(selected)} aria-label={blank ? 'Sin preview' : playing ? 'Pausar' : 'Reproducir'}><Icon name={playing ? 'pause' : 'play'} size={24} /></button>
-          <button type="button" className="icon" onClick={() => move(1)} disabled={selectedIndex >= tracks.length - 1} aria-label="Canción siguiente"><Icon name="next" /></button>
+          <button type="button" className="icon" onClick={() => move(-1)} disabled={selectedIndex <= 0} aria-label="Pista anterior"><Icon name="previous" /></button>
+          <button type="button" className="icon primary play" onClick={togglePlay} disabled={blank || !player.playable(selected)} aria-label={blank ? 'Sin preview' : playing ? 'Pausar' : 'Reproducir'}><Icon name={playing ? 'pause' : 'play'} size={26} /></button>
+          <button type="button" className="icon" onClick={() => move(1)} disabled={selectedIndex >= tracks.length - 1} aria-label="Pista siguiente"><Icon name="next" /></button>
         </div>
-        <div className="transport-progress lcd-text">
+        <div className="transport-progress">
           {blank
-            ? <div className="no-preview"><span>Sin preview de 30 s.</span><ActionLink href={selected.externalUrl} icon="external">Escuchar en {selected.provider === 'itunes' ? 'iTunes' : selected.provider === 'deezer' ? 'Deezer' : 'Last.fm'}</ActionLink></div>
+            ? <div className="no-preview"><span>Sin preview de 30 s.</span><ActionLink href={selected.externalUrl} icon="external">Escuchar en {providerName}</ActionLink></div>
             : <>
               <span>{formatTime(current)}</span>
-              <input type="range" min="0" max={duration} step="0.5" value={Math.min(current, duration)} disabled={!isLoaded} style={{ '--fill': `${Math.min(100, (current / duration) * 100)}%` }} onChange={event => player.seek(Number(event.target.value))} aria-label="Posición en la canción" aria-valuetext={`${formatTime(current)} de ${formatTime(duration)}`} />
+              <input type="range" min="0" max={duration} step="0.5" value={Math.min(current, duration)} disabled={!isLoaded} style={{ '--fill': `${Math.min(100, (current / duration) * 100)}%` }} onChange={event => player.seek(Number(event.target.value))} aria-label="Posición en la pista" aria-valuetext={`${formatTime(current)} de ${formatTime(duration)}`} />
               <span>{formatTime(duration)}</span>
             </>}
         </div>
         <div className="transport-extra">
           <label className="volume"><Icon name="volume" /><span className="visually-hidden">Volumen</span><input type="range" min="0" max="1" step="0.05" value={player.volume} style={{ '--fill': `${player.volume * 100}%` }} onChange={event => player.setVolume(Number(event.target.value))} /></label>
-          {!blank && <ActionLink href={selected.externalUrl} icon="external">{selected.provider === 'itunes' ? 'iTunes' : selected.provider === 'deezer' ? 'Deezer' : 'Last.fm'}</ActionLink>}
+          {!blank && <ActionLink href={selected.externalUrl} icon="external">{providerName}</ActionLink>}
         </div>
         {isLoaded && player.error && <p className="transport-error" role="alert">{player.error}</p>}
       </section>}
     </div>}
 
-    <nav className="rec-foot" aria-label="Seguir explorando"><ActionLink to="/moods" icon="moods">Cambiar de mood</ActionLink><ActionLink to="/explorar" icon="search">Buscar música</ActionLink></nav>
+    <nav className="rec-foot" aria-label="Seguir en el estudio"><ActionLink to="/moods" icon="moods">Otra caja del estante</ActionLink><ActionLink to="/explorar" icon="search">Ir a la cabina</ActionLink></nav>
   </div>;
 }

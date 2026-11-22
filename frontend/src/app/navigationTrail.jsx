@@ -7,7 +7,7 @@ import Icon from '../shared/components/Icon';
 const KEY = 'vibetrack:trail';
 const LIMIT = 20;
 const MOOD_NAMES = { feliz: 'Feliz', relajado: 'Relajado', motivado: 'Motivado', triste: 'Triste', romantico: 'Romántico', cansado: 'Cansado' };
-const PAGE_NAMES = { '/': 'Inicio', '/moods': 'Moods', '/explorar': 'Explorar', '/cuenta': 'Tu cuenta', '/preferencias': 'Preferencias', '/estado': 'Estado de los servicios' };
+const PAGE_NAMES = { '/': 'el cuarto', '/moods': 'el estante', '/explorar': 'la cabina', '/cuenta': 'el perchero', '/preferencias': 'la consola', '/estado': 'el cuadro eléctrico' };
 // Destino lógico cuando no hay página anterior (entrada directa o recarga).
 const PARENTS = { '/moods': '/', '/explorar': '/', '/cuenta': '/', '/preferencias': '/cuenta', '/estado': '/', '/login': '/', '/registro': '/' };
 // Iniciar sesión o registrarse nunca es un destino de retorno: tras entrar, volver ahí no tiene sentido.
@@ -15,8 +15,8 @@ const NOT_A_DESTINATION = new Set(['/login', '/registro']);
 
 export function pageName(pathname) {
   const mood = pathname.match(/^\/recomendaciones\/([^/]+)/)?.[1];
-  if (mood) return MOOD_NAMES[decodeURIComponent(mood)] || decodeURIComponent(mood);
-  return PAGE_NAMES[pathname] || 'Inicio';
+  if (mood) return `la sesión ${MOOD_NAMES[decodeURIComponent(mood)] || decodeURIComponent(mood)}`;
+  return PAGE_NAMES[pathname] || 'el cuarto';
 }
 const parentOf = pathname => pathname.startsWith('/recomendaciones/') ? '/moods' : PARENTS[pathname] || '/';
 
@@ -61,6 +61,6 @@ export function PageBack() {
   const target = useBackTarget();
   if (pathname === '/') return null;
   return <nav className="page-back" aria-label="Volver">
-    <Link to={target.to}><Icon name="arrow-left" size={18} /><span>Volver a <strong>{target.label}</strong></span></Link>
+    <Link to={target.to}><Icon name="arrow-left" size={18} /><span>{target.label.startsWith('el ') ? <>Volver al <strong>{target.label.slice(3)}</strong></> : <>Volver a <strong>{target.label}</strong></>}</span></Link>
   </nav>;
 }

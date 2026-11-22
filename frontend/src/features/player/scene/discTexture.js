@@ -1,37 +1,49 @@
 import { CanvasTexture, SRGBColorSpace } from 'three';
 import '@fontsource/permanent-marker/400.css';
 
-// 1024 px: el rótulo del CD-R se lee nítido también en el lector a 1440 px.
+// Cara de un vinilo de 12": surcos, brillo de la luz del estudio y la etiqueta central.
+// 1024 px: la etiqueta escrita a mano se lee nítida en el plato a 1440 px.
 const SIZE = 1024;
 const R = SIZE / 2;
+const LABEL = R * 0.34;
 const cache = new Map();
 // Caben la tanda actual y la siguiente sin retener 40 texturas de 1024 px en móviles.
 const MAX_CACHED = 16;
 
-// Una canción sin preview se muestra como CD-R virgen con su nombre a rotulador.
+// Una canción sin preview se muestra como prensado de prueba: etiqueta blanca escrita a rotulador.
 export { isBlankTrack as isBlank } from '../trackState';
 import { isBlankTrack, shortTitle } from '../trackState';
-// Portadas más nítidas para la textura: 500 px en Deezer, 600 px en iTunes.
+// Portadas más nítidas para la etiqueta: 500 px en Deezer, 600 px en iTunes.
 const largeArtwork = url => url?.replace(/\/250x250-/, '/500x500-').replace(/\/100x100bb\./, '/600x600bb.');
 
 function circle(ctx, radius) { ctx.beginPath(); ctx.arc(R, R, radius, 0, Math.PI * 2); }
 
-// Brillo iridiscente, anillo transparente, orificio central y canto.
-function finish(ctx) {
+// El vinilo: negro con surcos finos, bandas lisas entre pistas y el reflejo cálido de la lámpara.
+function drawGrooves(ctx) {
+  ctx.fillStyle = '#0b0908'; circle(ctx, R); ctx.fill();
+  for (let radius = LABEL + 8; radius < R - 6; radius += 2.2) {
+    // Bandas lisas (silencios entre pistas): anillos algo más brillantes.
+    const gap = [0.52, 0.64, 0.76, 0.88].some(f => Math.abs(radius / R - f) < 0.006);
+    ctx.strokeStyle = gap ? 'rgba(70, 58, 50, .9)' : `rgba(${28 + (radius % 3) * 6}, ${24 + (radius % 3) * 5}, ${22 + (radius % 3) * 4}, .9)`;
+    ctx.lineWidth = gap ? 3 : 1.1;
+    circle(ctx, radius); ctx.stroke();
+  }
   if (ctx.createConicGradient) {
-    const sheen = ctx.createConicGradient(3.4, R, R);
-    sheen.addColorStop(0, 'rgba(255,255,255,0)');
-    sheen.addColorStop(0.1, 'rgba(190,235,255,.26)');
-    sheen.addColorStop(0.24, 'rgba(255,255,255,0)');
-    sheen.addColorStop(0.55, 'rgba(255,220,250,.16)');
-    sheen.addColorStop(0.7, 'rgba(255,255,255,0)');
-    sheen.addColorStop(1, 'rgba(255,255,255,0)');
+    const sheen = ctx.createConicGradient(-0.6, R, R);
+    sheen.addColorStop(0, 'rgba(255, 196, 140, 0)');
+    sheen.addColorStop(0.06, 'rgba(255, 196, 140, .2)');
+    sheen.addColorStop(0.12, 'rgba(255, 196, 140, 0)');
+    sheen.addColorStop(0.5, 'rgba(255, 196, 140, 0)');
+    sheen.addColorStop(0.56, 'rgba(255, 210, 160, .12)');
+    sheen.addColorStop(0.62, 'rgba(255, 196, 140, 0)');
+    sheen.addColorStop(1, 'rgba(255, 196, 140, 0)');
     ctx.fillStyle = sheen; circle(ctx, R); ctx.fill();
   }
-  ctx.fillStyle = 'rgba(214, 226, 238, .94)'; circle(ctx, R * 0.21); ctx.fill();
-  ctx.strokeStyle = 'rgba(255,255,255,.7)'; ctx.lineWidth = 4; circle(ctx, R * 0.21); ctx.stroke();
-  ctx.fillStyle = '#0a1f3f'; circle(ctx, R * 0.075); ctx.fill();
-  ctx.strokeStyle = 'rgba(255,255,255,.6)'; ctx.lineWidth = 8; circle(ctx, R - 4); ctx.stroke();
+  ctx.strokeStyle = 'rgba(0, 0, 0, .9)'; ctx.lineWidth = 10; circle(ctx, R - 5); ctx.stroke();
+}
+
+function spindle(ctx) {
+  ctx.fillStyle = '#0b0908'; circle(ctx, R * 0.03); ctx.fill();
 }
 
 function wrap(ctx, text, maxWidth, maxLines) {
@@ -54,79 +66,51 @@ function wrap(ctx, text, maxWidth, maxLines) {
   return lines;
 }
 
-// CD-R: superficie plateada con surcos y el título escrito a mano sobre el orificio.
-
+// Prensado de prueba: etiqueta de papel marfil con el título y el artista a rotulador.
 function drawBlank(ctx, track) {
-  const base = ctx.createRadialGradient(R * 0.7, R * 0.6, R * 0.1, R, R, R);
-  base.addColorStop(0, '#f6f8fb'); base.addColorStop(0.6, '#dfe6ee'); base.addColorStop(1, '#c8d2dd');
-  ctx.fillStyle = base; circle(ctx, R); ctx.fill();
-  ctx.lineWidth = 2;
-  for (let radius = R * 0.24; radius < R - 8; radius += 10) {
-    ctx.strokeStyle = `rgba(120, 140, 165, ${0.05 + (radius % 3) * 0.02})`;
-    circle(ctx, radius); ctx.stroke();
-  }
+  drawGrooves(ctx);
+  const paper = ctx.createRadialGradient(R * 0.94, R * 0.9, 10, R, R, LABEL);
+  paper.addColorStop(0, '#f2ead8'); paper.addColorStop(1, '#ddcfb2');
+  ctx.fillStyle = paper; circle(ctx, LABEL); ctx.fill();
   ctx.save();
-  // Franja reservada para el título: del borde superior hasta antes del anillo central.
-  const bandTop = R * 0.22, bandBottom = R * 0.74;
-  ctx.fillStyle = '#05070a';
-  ctx.strokeStyle = '#05070a';
-  ctx.lineJoin = 'round';
+  ctx.translate(R, R);
+  ctx.rotate(-0.06);
+  ctx.fillStyle = '#1a120c';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   const title = shortTitle(track.title);
-  const maxWidth = SIZE * 0.6;
-  let size = 128, lines = [];
-  // Primero dos líneas encogiendo la letra; si no cabe, tres. Nunca invade el centro.
-  for (const maxLines of [2, 3]) {
-    for (size = 128; size >= 52; size -= 6) {
-      ctx.font = `${size}px "Permanent Marker", cursive`;
-      lines = wrap(ctx, title, maxWidth, maxLines);
-      const fitsWidth = lines.every(line => ctx.measureText(line).width <= maxWidth) && !lines.at(-1).endsWith('…');
-      if (fitsWidth && lines.length * size * 1.02 <= bandBottom - bandTop) break;
-    }
-    if (lines.length <= maxLines && !lines.at(-1).endsWith('…') && lines.length * size * 1.02 <= bandBottom - bandTop) break;
+  const maxWidth = LABEL * 1.55;
+  let size = 64, lines = [];
+  for (size = 64; size >= 30; size -= 4) {
+    ctx.font = `${size}px "Permanent Marker", cursive`;
+    lines = wrap(ctx, title, maxWidth, 2);
+    if (!lines.at(-1).endsWith('…')) break;
   }
-  const lineHeight = size * 1.02;
-  ctx.translate(R, (bandTop + bandBottom) / 2);
-  ctx.rotate(-0.07);
-  ctx.lineWidth = size * 0.05;
-  lines.forEach((line, i) => { const y = (i - (lines.length - 1) / 2) * lineHeight; ctx.strokeText(line, 0, y); ctx.fillText(line, 0, y); });
-  // Subrayado a mano alzada.
-  const width = Math.min(SIZE * 0.5, Math.max(...lines.map(line => ctx.measureText(line).width)));
-  ctx.lineWidth = 9; ctx.lineCap = 'round';
-  ctx.beginPath();
-  const y = (lines.length / 2) * lineHeight + 4;
-  ctx.moveTo(-width / 2, y); ctx.quadraticCurveTo(0, y + 14, width / 2, y - 6); ctx.stroke();
+  lines.forEach((line, i) => ctx.fillText(line, 0, -LABEL * 0.36 + (i - (lines.length - 1) / 2) * size * 1.02));
+  ctx.font = '34px "Permanent Marker", cursive';
+  ctx.fillText(wrap(ctx, track.artist, maxWidth * 0.9, 1)[0] || '', 0, LABEL * 0.42);
   ctx.restore();
-  ctx.save();
-  ctx.translate(R, R * 1.5);
-  ctx.rotate(0.04);
-  ctx.fillStyle = '#10131a';
-  ctx.textAlign = 'center';
-  ctx.font = '62px "Permanent Marker", cursive';
-  ctx.fillText(wrap(ctx, track.artist, SIZE * 0.5, 1)[0] || '', 0, 0);
-  ctx.restore();
-  finish(ctx);
+  spindle(ctx);
 }
 
 function drawCover(ctx, image) {
-  ctx.save(); circle(ctx, R); ctx.clip();
-  ctx.fillStyle = '#c9d3de'; ctx.fillRect(0, 0, SIZE, SIZE);
-  ctx.drawImage(image, 0, 0, SIZE, SIZE);
+  drawGrooves(ctx);
+  ctx.save(); circle(ctx, LABEL); ctx.clip();
+  ctx.drawImage(image, R - LABEL, R - LABEL, LABEL * 2, LABEL * 2);
   ctx.restore();
-  finish(ctx);
+  ctx.strokeStyle = 'rgba(0, 0, 0, .35)'; ctx.lineWidth = 3; circle(ctx, LABEL); ctx.stroke();
+  spindle(ctx);
 }
 
+// Portada aún sin llegar: etiqueta lisa de cartón; no se afirma todavía que falte el preview.
 function drawLoading(ctx) {
-  const base = ctx.createRadialGradient(R * 0.7, R * 0.6, R * 0.1, R, R, R);
-  base.addColorStop(0, '#eef2f6'); base.addColorStop(1, '#b9c4d1');
-  ctx.fillStyle = base; circle(ctx, R); ctx.fill();
-  finish(ctx);
+  drawGrooves(ctx);
+  ctx.fillStyle = '#6b4a30'; circle(ctx, LABEL); ctx.fill();
+  spindle(ctx);
 }
 
-// Textura del lado impreso de un CD. Se dibuja al instante y se completa al cargar portada o fuente.
+// Textura de la cara de un vinilo. Se dibuja al instante y se completa al cargar portada o fuente.
 export function discTexture(track, onUpdate) {
-  // Sin preview confirmado → CD-R. Portada aún sin llegar → disco plateado liso (no se afirma "sin preview").
   const blank = isBlankTrack(track);
   const pending = !blank && !track?.artworkUrl;
   const key = `${track?.id}:${blank ? 'blank' : pending ? 'pending' : 'cover'}`;
@@ -141,7 +125,7 @@ export function discTexture(track, onUpdate) {
   const refresh = () => { texture.needsUpdate = true; onUpdate?.(); };
   const writeBlank = () => {
     drawBlank(ctx, track); refresh();
-    document.fonts?.load('128px "Permanent Marker"').then(() => { ctx.clearRect(0, 0, SIZE, SIZE); drawBlank(ctx, track); refresh(); }).catch(() => {});
+    document.fonts?.load('64px "Permanent Marker"').then(() => { ctx.clearRect(0, 0, SIZE, SIZE); drawBlank(ctx, track); refresh(); }).catch(() => {});
   };
   if (blank) writeBlank();
   else if (pending) { drawLoading(ctx); refresh(); }
@@ -151,7 +135,7 @@ export function discTexture(track, onUpdate) {
     image.crossOrigin = 'anonymous';
     image.decoding = 'async';
     image.onload = () => { ctx.clearRect(0, 0, SIZE, SIZE); drawCover(ctx, image); refresh(); };
-    // Portada ausente o bloqueada: el disco queda como CD-R con su nombre.
+    // Portada ausente o bloqueada: queda como prensado de prueba con su nombre.
     image.onerror = () => { ctx.clearRect(0, 0, SIZE, SIZE); writeBlank(); };
     image.src = largeArtwork(track.artworkUrl);
   }
@@ -159,6 +143,66 @@ export function discTexture(track, onUpdate) {
   while (cache.size > MAX_CACHED) {
     const [oldest, old] = cache.entries().next().value;
     cache.delete(oldest); old.dispose();
+  }
+  return texture;
+}
+
+// Funda cuadrada: la portada a toda cara; sin preview, cartón kraft con el título a rotulador.
+const SLEEVE = 512;
+const sleeves = new Map();
+function drawKraft(ctx, track) {
+  ctx.fillStyle = '#b48a5c'; ctx.fillRect(0, 0, SLEEVE, SLEEVE);
+  for (let i = 0; i < 900; i++) {
+    ctx.fillStyle = `rgba(${Math.random() < 0.5 ? '70,44,22' : '235,205,160'},${Math.random() * 0.08})`;
+    ctx.fillRect(Math.random() * SLEEVE, Math.random() * SLEEVE, 2, 2);
+  }
+  ctx.strokeStyle = 'rgba(60, 36, 18, .35)'; ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.arc(SLEEVE / 2, SLEEVE / 2, SLEEVE * 0.16, 0, Math.PI * 2); ctx.stroke();
+  ctx.save();
+  ctx.translate(SLEEVE / 2, SLEEVE * 0.3);
+  ctx.rotate(-0.05);
+  ctx.fillStyle = '#1a120c'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  let size = 64, lines = [];
+  for (size = 64; size >= 28; size -= 4) {
+    ctx.font = `${size}px "Permanent Marker", cursive`;
+    lines = wrap(ctx, shortTitle(track.title), SLEEVE * 0.82, 2);
+    if (!lines.at(-1).endsWith('…')) break;
+  }
+  lines.forEach((line, i) => ctx.fillText(line, 0, (i - (lines.length - 1) / 2) * size * 1.02));
+  ctx.font = '34px "Permanent Marker", cursive';
+  ctx.fillText(wrap(ctx, track.artist, SLEEVE * 0.8, 1)[0] || '', 0, SLEEVE * 0.5);
+  ctx.restore();
+}
+export function sleeveTexture(track, onUpdate) {
+  const blank = isBlankTrack(track);
+  const key = `${track?.id}:${blank ? 'blank' : track?.artworkUrl ? 'cover' : 'pending'}`;
+  const hit = sleeves.get(key);
+  if (hit) { sleeves.delete(key); sleeves.set(key, hit); return hit; }
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = SLEEVE;
+  const ctx = canvas.getContext('2d');
+  const texture = new CanvasTexture(canvas);
+  texture.colorSpace = SRGBColorSpace;
+  const refresh = () => { texture.needsUpdate = true; onUpdate?.(); };
+  const kraft = () => {
+    drawKraft(ctx, track); refresh();
+    document.fonts?.load('64px "Permanent Marker"').then(() => { drawKraft(ctx, track); refresh(); }).catch(() => {});
+  };
+  if (blank || !track?.artworkUrl) {
+    if (blank) kraft(); else { ctx.fillStyle = '#6b4a30'; ctx.fillRect(0, 0, SLEEVE, SLEEVE); refresh(); }
+  } else {
+    ctx.fillStyle = '#6b4a30'; ctx.fillRect(0, 0, SLEEVE, SLEEVE); refresh();
+    const image = new Image();
+    image.crossOrigin = 'anonymous';
+    image.decoding = 'async';
+    image.onload = () => { ctx.drawImage(image, 0, 0, SLEEVE, SLEEVE); refresh(); };
+    image.onerror = kraft;
+    image.src = largeArtwork(track.artworkUrl);
+  }
+  sleeves.set(key, texture);
+  while (sleeves.size > MAX_CACHED) {
+    const [oldest, old] = sleeves.entries().next().value;
+    sleeves.delete(oldest); old.dispose();
   }
   return texture;
 }

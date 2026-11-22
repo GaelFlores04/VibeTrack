@@ -22,18 +22,20 @@ class SceneBoundary extends Component {
   render() { return this.state.failed ? null : this.props.children; }
 }
 
-// Respaldo estático (D10/D12): el mismo reproductor dibujado, con el CD elegido dentro.
+// Respaldo estático (sin WebGL o equipo lento): el mismo tocadiscos dibujado, con el vinilo elegido
+// en el plato y el brazo posado sólo mientras suena.
 function StaticPlayer({ selected, playing }) {
-  return <div className="static-player" aria-hidden="true">
-    <div className="static-body">
-      <div className={`static-disc${playing ? ' is-spinning' : ''}`}><Disc track={selected} size={220} /></div>
-      <div className="static-lid" />
+  return <div className={`static-player${playing ? ' is-playing' : ''}`} aria-hidden="true">
+    <div className="static-plinth">
+      <div className="static-platter"><div className={`static-disc${playing ? ' is-spinning' : ''}`}><Disc track={selected} size={220} /></div></div>
+      <div className="static-arm"><span /></div>
+      <span className="static-pilot" />
     </div>
   </div>;
 }
 
-// lcd: la pantalla HTML (D09) se acopla al frente del reproductor que la escena proyecta en pantalla.
-const STATIC_ANCHOR = { x: 0.59, y: 0.8 };
+// lcd: la placa de latón HTML se acopla al frente del zócalo que la escena proyecta en pantalla.
+const STATIC_ANCHOR = { x: 0.5, y: 0.86 };
 export default function PlayerStage({ tracks, selected, playing, reduced, onPick, label, lcd }) {
   const [failed, setFailed] = useState(() => !hasWebGL());
   const [anchor, setAnchor] = useState(null);

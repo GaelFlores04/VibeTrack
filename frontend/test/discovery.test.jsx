@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { MemoryRouter } from 'react-router-dom';
-import MoodCarousel from '../src/features/moods/MoodCarousel';
+import MoodShelf from '../src/features/moods/MoodShelf';
 import TrackCard from '../src/shared/components/TrackCard';
 import ResourceState from '../src/shared/components/ResourceState';
 import ActionLink from '../src/shared/components/ActionLink';
@@ -15,22 +15,23 @@ const moods = [
 ];
 const render = component => renderToStaticMarkup(<MemoryRouter>{component}</MemoryRouter>);
 
-test('el carrusel mantiene fuera del foco los slides que no se muestran', () => {
-  const html = render(<MoodCarousel moods={moods} />);
-  const slides = [...html.matchAll(/<article\b[^>]*>[\s\S]*?<\/article>/g)].map(match => match[0]);
-  assert.equal(slides.length, 3);
-  assert.doesNotMatch(slides[0], /\binert=/);
-  assert.ok(slides.slice(1).every(slide => /\binert=""/.test(slide)));
-  assert.match(slides[0], /href="\/recomendaciones\/feliz"/);
-  assert.match(html, /aria-label="Mood anterior"/);
-  assert.match(html, /aria-disabled="true"[^>]*aria-label="Mood anterior"/);
-  assert.doesNotMatch(html, /<button[^>]*\sdisabled=/);
-  assert.equal([...html.matchAll(/aria-pressed="true"/g)].length, 1);
-  assert.match(html, /role="status">Feliz · 1 de 3/);
+test('el estante: cada caja es un enlace a su sesión, rotulado y descrito para lectores de pantalla', () => {
+  const html = render(<MoodShelf moods={[...moods, { slug: 'motivado', name: 'Motivado' }]} />);
+  const boxes = [...html.matchAll(/<a class="record-box"[^>]*>[\s\S]*?<\/a>/g)].map(match => match[0]);
+  assert.equal(boxes.length, 4);
+  assert.match(boxes[0], /href="\/recomendaciones\/feliz"/);
+  assert.match(boxes[0], /<span class="box-label">Feliz<\/span>/);
+  assert.match(boxes[0], /aria-describedby="box-feliz"/);
+  assert.match(html, /<p class="box-tag" id="box-feliz">[^<]+<\/p>/);
+  // Tres cajas por balda: la cuarta pasa a la balda de abajo.
+  assert.equal([...html.matchAll(/class="shelf-plank"/g)].length, 2);
+  assert.doesNotMatch(html, /<button/);
 });
 
-test('un catálogo vacío no deja controles de carrusel sin contenido', () => {
-  assert.equal(render(<MoodCarousel moods={[]} />), '');
+test('un estante sin moods lo dice y no deja enlaces vacíos', () => {
+  const html = render(<MoodShelf moods={[]} />);
+  assert.match(html, /El estante está vacío/);
+  assert.doesNotMatch(html, /<a /);
 });
 
 const track = {
@@ -93,7 +94,7 @@ function fakePlayer(overrides = {}) {
 
 test('Explorar muestra el reproductor vacío sin afirmar que hay música sonando', () => {
   const html = render(<ExplorePlayer player={fakePlayer()} tracks={[]} />);
-  assert.match(html, /Tu reproductor/);
+  assert.match(html, /El tocadiscos de la cabina/);
   assert.match(html, /Elige una canción de los resultados/);
   assert.match(html, /Reproductor vacío/);
   assert.match(html, /VACÍO/);

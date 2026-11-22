@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 2,
+  "name": "VibeTrack Listening Studio",
+  "source": "../DESIGN.md",
+  "colors": {
+    "background": "#efe6d8",
+    "surface": "#fbf5e9",
+    "ink": "#35251e",
+    "secondary": "#685044",
+    "accent": "#8a482b",
+    "moodSurface": "#38251e",
+    "moodSignal": "#d99a5d"
+  },
+  "motion": {
+    "interaction": "140ms",
+    "keyboard": "none",
+    "reducedMotion": "none"
+  },
+  "preserved": [
+    "3D portable player",
+    "3D CDs accompanying player"
+  ]
+}

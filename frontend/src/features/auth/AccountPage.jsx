@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { CoatsArt } from '../home/StudioObjects';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from './AuthProvider';
 import { usePlayer } from '../player/PlayerProvider';
@@ -62,11 +63,19 @@ export default function AccountPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   async function exit() { setBusy(true); setError(''); try { await logout(); } catch (err) { setError(err.message); } finally { setBusy(false); } }
-  return <><h1>Tu cuenta</h1><p>{user.name} · {user.email}</p><p>{user.preferences ? 'Tus recomendaciones tienen en cuenta tus preferencias dentro del mood que elijas.' : 'Todavía no hay preferencias. Escucharás una selección inicial de canciones conocidas por mood.'}</p>
+  // El perchero: la ficha de la cuenta y la de Spotify cuelgan del riel, junto a los auriculares.
+  return <section className="rack-room"><h1>El perchero</h1><p className="room-purpose">Tu cuenta, tu sesión y tu Spotify cuelgan aquí.</p>
+    <div className="coat-rack">
+    <span className="rack-rail" aria-hidden="true" />
+    <div className="hanging-tag account-tag">
+    <p><strong>{user.name}</strong> · {user.email}</p><p>{user.preferences ? 'Tus recomendaciones tienen en cuenta tus preferencias dentro del mood que elijas.' : 'Todavía no hay preferencias. Escucharás una selección inicial de canciones conocidas por mood.'}</p>
     <p><Link to="/preferencias">Configurar preferencias</Link> · <Link to="/moods">Elegir un mood</Link></p>
-    <section id="vinculaciones" aria-labelledby="connections-title">
+    {error && <p role="alert">{error}</p>}<button onClick={exit} disabled={busy}>{busy ? 'Cerrando…' : 'Cerrar sesión'}</button>
+    </div>
+    <div className="rack-headphones"><CoatsArt /></div>
+    </div>
+    <section id="vinculaciones" className="hanging-tag connections-tag" aria-labelledby="connections-title">
       <h2 id="connections-title">Vinculaciones</h2>
       <SpotifySection />
-    </section>
-    {error && <p role="alert">{error}</p>}<button onClick={exit} disabled={busy}>{busy ? 'Cerrando…' : 'Cerrar sesión'}</button></>;
+    </section></section>;
 }

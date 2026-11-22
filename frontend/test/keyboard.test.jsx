@@ -5,7 +5,7 @@ import { JSDOM } from 'jsdom';
 import { act, useState } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { focusableElements, installKeyboardNavigation } from '../src/shared/keyboardNavigation';
-import MoodCarousel from '../src/features/moods/MoodCarousel';
+import MoodShelf from '../src/features/moods/MoodShelf';
 import Autocomplete from '../src/shared/components/Autocomplete';
 import { MiniPlayer } from '../src/features/player/PlayerProvider';
 import PlayerStage from '../src/features/player/PlayerStage';
@@ -144,20 +144,17 @@ test('un widget puede consumir flechas sin que el manejador global le quite el f
   } finally { f.close(); }
 });
 
-test('el carrusel cambia de slide con flechas y conserva el foco fuera del slide inerte', async () => {
-  const f = await mount(<MoodCarousel moods={[{ slug: 'feliz', name: 'Feliz' }, { slug: 'triste', name: 'Triste' }]} />);
+test('el estante se recorre con flechas dentro de cada balda', async () => {
+  const f = await mount(<MoodShelf moods={[{ slug: 'feliz', name: 'Feliz' }, { slug: 'triste', name: 'Triste' }, { slug: 'relajado', name: 'Relajado' }]} />);
   try {
-    const viewport = f.document.querySelector('.carousel-viewport');
-    Object.defineProperty(viewport, 'clientWidth', { value: 320 });
-    f.document.querySelector('.mood-slide a').focus();
+    const boxes = [...f.document.querySelectorAll('a.record-box')];
+    boxes[0].focus();
     await act(async () => { f.key('ArrowRight'); });
-    assert.equal(viewport.scrollLeft, 320);
-    assert.equal(f.document.activeElement.getAttribute('aria-label'), 'Ver Triste');
-    assert.equal(f.document.querySelectorAll('.mood-slide')[0].hasAttribute('inert'), true);
-    assert.equal(f.document.querySelector('[aria-pressed="true"]').getAttribute('aria-label'), 'Ver Triste');
+    assert.equal(f.document.activeElement, boxes[1]);
+    await act(async () => { f.key('End'); });
+    assert.equal(f.document.activeElement, boxes[2]);
     await act(async () => { f.key('Home'); });
-    assert.equal(viewport.scrollLeft, 0);
-    assert.equal(f.document.activeElement.getAttribute('aria-label'), 'Ver Feliz');
+    assert.equal(f.document.activeElement, boxes[0]);
   } finally {
     await f.unmount();
   }
@@ -238,7 +235,7 @@ test('la escena deja de girar fuera de pantalla o en una pestaña oculta', async
   assert.equal(disconnected, true);
 });
 
-test('el mini inicia el giro lineal y conserva la animación y el ángulo al pausar o cargar', async () => {
+test('la portada del mini permanece estable al reproducir, pausar y cargar', async () => {
   const track = { id: 'a', title: 'Primera', artist: 'Artista', previewUrl: '/a' };
   function MiniFixture() {
     const [status, setStatus] = useState('paused');
@@ -250,35 +247,15 @@ test('el mini inicia el giro lineal y conserva la animación y el ángulo al pau
     </>;
   }
   const f = await mount(<MiniFixture />);
-  let motion;
   try {
     const artwork = f.document.querySelector('.mini-artwork');
     assert.ok(artwork.querySelector('.disc'));
-    motion = f.animations.find(animation => animation.element === artwork);
-    assert.ok(motion);
-    assert.deepEqual(motion.keyframes, [{ transform: 'rotate(0deg)' }, { transform: 'rotate(360deg)' }]);
-    assert.deepEqual(motion.options, { duration: 6000, iterations: Infinity, easing: 'linear' });
-    assert.equal(motion.playState, 'paused');
-    await act(async () => f.document.getElementById('play-test').click());
-    assert.equal(motion.playState, 'running');
-    motion.currentTime = 2100;
-    await act(async () => f.document.getElementById('loading-test').click());
-    assert.equal(motion.playState, 'paused');
-    assert.equal(motion.currentTime, 2100);
-    await act(async () => f.document.getElementById('play-test').click());
-    assert.equal(motion.currentTime, 2100);
-    Object.defineProperty(f.document, 'visibilityState', { configurable: true, value: 'hidden' });
-    await act(async () => f.document.dispatchEvent(new f.dom.window.Event('visibilitychange')));
-    assert.equal(motion.playState, 'paused');
-    Object.defineProperty(f.document, 'visibilityState', { configurable: true, value: 'visible' });
-    await act(async () => f.document.dispatchEvent(new f.dom.window.Event('visibilitychange')));
-    assert.equal(motion.playState, 'running');
-    await act(async () => f.document.getElementById('pause-test').click());
-    assert.equal(motion.playState, 'paused');
-    assert.equal(f.document.querySelector('.mini-artwork'), artwork);
-    assert.equal(f.animations.filter(animation => animation.element === artwork).length, 1);
+    for (const state of ['play-test', 'loading-test', 'pause-test']) {
+      await act(async () => f.document.getElementById(state).click());
+      assert.equal(f.document.querySelector('.mini-artwork'), artwork);
+      assert.equal(f.animations.filter(animation => animation.element === artwork).length, 0);
+    }
   } finally { await f.unmount(); }
-  assert.equal(motion.playState, 'idle');
 });
 
 test('la miniatura compartida de la barra respeta cambios de movimiento reducido', async () => {
@@ -305,7 +282,7 @@ test('el disco conserva una caja visible al quedar dentro del contenedor de anim
   const f = await mount(<PlaybackDisc track={track} size={60} />);
   try {
     const stylesheet = f.document.createElement('style');
-    stylesheet.textContent = readFileSync(new URL('../src/styles/base.css', import.meta.url), 'utf8');
+    stylesheet.textContent = readFileSync(new URL('../src/styles/studio.css', import.meta.url), 'utf8');
     f.document.head.append(stylesheet);
     const wrapper = f.document.querySelector('.playback-disc');
     const disc = wrapper.querySelector('.disc');

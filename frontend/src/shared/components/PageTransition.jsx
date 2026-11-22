@@ -9,7 +9,7 @@ export default function PageTransition({ pageKey, children }) {
   useLayoutEffect(() => {
     const returning = pageKey === '/' || (previousPage.current.startsWith('/recomendaciones/') && pageKey === '/moods');
     previousPage.current = pageKey;
-    if (document.documentElement.dataset.input === 'keyboard') return;
+    if (reduced || document.documentElement.dataset.input === 'keyboard') return;
     const page = element.current;
     if (!page?.animate) return;
     const animation = page.animate(

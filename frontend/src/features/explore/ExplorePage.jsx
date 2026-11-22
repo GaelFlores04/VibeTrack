@@ -49,14 +49,20 @@ export default function ExplorePage() {
   }
 
   return (
-    <section className="explore-page" aria-labelledby="explore-title">
+    <section className="explore-page booth-room" aria-labelledby="explore-title">
       <header className="page-heading">
         <div>
-          <h1 id="explore-title">Sigue tu curiosidad.</h1>
-          <p className="lede">Esa canción que tienes en mente. O tu próximo descubrimiento.</p>
+          <h1 id="explore-title">La cabina</h1>
+          <p className="lede">Pide por el micrófono de la cabina: esa canción que tienes en mente, o el artista que quieres volver a oír.</p>
         </div>
       </header>
-      <form className="explore-search" role="search" aria-label="Buscar música" onSubmit={submit}>
+      {/* La cabina: tras el cristal, su tocadiscos; debajo, la mesa del micrófono para pedir. */}
+      <div className="booth">
+      <div className="booth-glass">
+        <ExplorePlayer player={player} tracks={resource.data || []} source={source} />
+      </div>
+      <form className="explore-search talkback" role="search" aria-label="Buscar música" onSubmit={submit}>
+        <span className="talkback-lamp on-air-sign" aria-hidden="true">Micrófono</span>
         <div className="search">
           <Autocomplete
             label="Canción o artista"
@@ -72,9 +78,9 @@ export default function ExplorePage() {
         </div>
         <p className="search-help">Previews de 30 segundos cuando están disponibles.</p>
       </form>
+      </div>
 
-      <div className="explore-workspace">
-        <ExplorePlayer player={player} tracks={resource.data || []} source={source} />
+      <div className="explore-workspace record-bin">
         <div className="explore-results">
 
           {!term && (

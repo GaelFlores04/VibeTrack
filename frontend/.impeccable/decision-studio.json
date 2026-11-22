@@ -1,0 +1,119 @@
+{
+  "title": "Elige la dirección del estudio",
+  "question": "La tirada asignó «La hoja de sesión». Quédate con ella, toma la alternativa o pide otra tirada.",
+  "options": [
+    {
+      "id": "assigned",
+      "kind": "assigned",
+      "label": "La hoja de sesión",
+      "kicker": "THE ROLL",
+      "lineage": "Estudios de grabación analógicos de los 60–70: hojas de pistas, cajas de cinta rotuladas, luz de tungsteno",
+      "thesis": "Cada tanda es una sesión de grabación: las 7 canciones se anotan en la hoja de pistas del estudio y suenan, una a una, en el tocadiscos bajo el foco.",
+      "palette": ["#1c120c", "#3b2416", "#8a5a32", "#f4a259", "#e9dcc4", "#7a1f1f"],
+      "materials": ["chapa de nogal oscuro", "bombillas de tungsteno", "cajas de vinilo rotuladas a mano", "hoja de pistas en portapapeles", "vinilo y aguja"],
+      "viewport": "El estudio de noche. Al centro, el tocadiscos 3D bajo un foco ámbar. A la izquierda, el estante de nogal con las 6 cajas de mood rotuladas (sacar una = elegir mood). A la derecha, la hoja de sesión de la tanda: 7 pistas numeradas, su motivo y su estado. Arriba, la luz «EN EL AIRE» se enciende cuando suena. Los demás espacios son objetos del cuarto: la consola (preferencias), la cabina (explorar), el perchero de auriculares (cuenta/Spotify).",
+      "risk": "Muchos objetos en móvil: el estante y la hoja deben plegarse como cajones bajo el tocadiscos sin volverse una lista genérica.",
+      "raised": [
+        { "from": "games-toys-physics-play-brick-build-instructions", "raise": "Secuencia estricta: la hoja numera cada pista y marca su estado como un paso (en cola, sonando, escuchada)." },
+        { "from": "signals-instruments-phosphor-terminal-midnight", "raise": "Los estados se muestran en el propio objeto (luz EN EL AIRE, brazo de la aguja, etiqueta) y no en avisos añadidos." },
+        { "from": "design-canon-factory-silkscreen-loft", "raise": "Cada tanda es una toma numerada del mismo mood: Toma 1, Toma 2…" },
+        { "from": "ikeda-datamatics", "raise": "Rigor tabular: BPM, duración y motivo alineados en columnas de cifras tabulares dentro de la hoja." }
+      ]
+    },
+    {
+      "id": "model-pick",
+      "kind": "pick",
+      "label": "La mesa de escucha",
+      "kicker": "IMPECCABLE’S PICK",
+      "lineage": "Mesas de escucha de estudios y tiendas de discos, vistas desde arriba",
+      "thesis": "La app es una mesa de madera vista desde arriba bajo una lámpara: todo lo que haces es tomar un objeto de la mesa.",
+      "palette": ["#24160e", "#5a3720", "#c9864a", "#f6c27a", "#151010"],
+      "materials": ["tablero de nogal", "lámpara de latón", "cajón de discos", "libreta de cuero", "auriculares"],
+      "viewport": "Vista cenital: el tocadiscos al centro de la mesa iluminada, el cajón de vinilos de los moods a la izquierda, la libreta (preferencias), los auriculares (cuenta) y la lupa (explorar) alrededor.",
+      "risk": "Es la dirección más familiar: la vista cenital de escritorio es muy común en portafolios y puede leerse como ilustración más que como herramienta."
+    },
+    {
+      "id": "challenger-silkscreen",
+      "kind": "challenger",
+      "catalogId": "design-canon-factory-silkscreen-loft",
+      "label": "Taller de serigrafía",
+      "verdict": "declined",
+      "lineage": "Serigrafías pop editadas en repetición",
+      "palette": ["#c0c4c8", "#111111", "#ff4fa3", "#f2a900"],
+      "materials": ["papel de aluminio", "tinta de serigrafía"],
+      "case": "Sustituye la madera y la luz cálida fijadas por aluminio y tinta fluorescente.",
+      "kept": "Cada tanda como edición numerada del mismo mood (Toma 1, Toma 2…)."
+    },
+    {
+      "id": "challenger-lowbrow",
+      "kind": "challenger",
+      "catalogId": "pop-culture-shelf-lowbrow-gallery-panel",
+      "label": "Panel lowbrow",
+      "verdict": "declined",
+      "lineage": "Paneles de galería lowbrow y kustom",
+      "palette": ["#d7263d", "#1b998b", "#f46036", "#111111"],
+      "materials": ["laca", "aerógrafo"],
+      "case": "Su laca de colores y contornos negros contradicen el nogal y el tungsteno.",
+      "kept": "Los objetos son los controles: el activo gana su luz y los inactivos se apagan."
+    },
+    {
+      "id": "challenger-brick",
+      "kind": "challenger",
+      "catalogId": "games-toys-physics-play-brick-build-instructions",
+      "label": "Manual de montaje",
+      "verdict": "declined",
+      "lineage": "Manuales de construcción con bloques",
+      "palette": ["#6cb4e4", "#111111", "#c4281c", "#f5cd2f"],
+      "materials": ["papel azul cielo", "flechas sin palabras"],
+      "case": "Infantil y azul cielo; nadie reconoce un estudio en él.",
+      "kept": "Secuencia estricta con estado por paso en la hoja de pistas."
+    },
+    {
+      "id": "challenger-gravity",
+      "kind": "challenger",
+      "catalogId": "dream-surreal-impossible-worlds-gravity-rain-garden",
+      "label": "Jardín de lluvia",
+      "verdict": "declined",
+      "lineage": "Mundos surrealistas",
+      "palette": ["#5f6b5e", "#3b6fb6", "#c0392b", "#111111"],
+      "materials": ["lluvia vectorial", "jardín crepuscular"],
+      "case": "Poético pero ajeno a la música y a la tarea de elegir y escuchar.",
+      "kept": "Cada objeto del estudio es una zona con su propia luz, y la luz guía hacia dónde ir."
+    },
+    {
+      "id": "challenger-ikeda",
+      "kind": "challenger",
+      "catalogId": "ikeda-datamatics",
+      "label": "Datamatics",
+      "verdict": "declined",
+      "lineage": "Instalaciones de datos en blanco y negro",
+      "palette": ["#000000", "#ffffff"],
+      "materials": ["barras de código", "monoespaciada"],
+      "case": "Blanco y negro puro: elimina la calidez que pediste.",
+      "kept": "Columnas tabulares para BPM, duración y motivo."
+    },
+    {
+      "id": "challenger-phosphor",
+      "kind": "challenger",
+      "catalogId": "signals-instruments-phosphor-terminal-midnight",
+      "label": "Terminal de fósforo",
+      "verdict": "declined",
+      "lineage": "Terminales de fósforo verde",
+      "palette": ["#0b0f0b", "#39ff6a"],
+      "materials": ["vidrio curvo", "brillo de fósforo"],
+      "case": "Verde fósforo en lugar de ámbar y madera; lectura de máquina, no de estudio.",
+      "kept": "Los estados se imprimen en el objeto, no en avisos añadidos."
+    }
+  ],
+  "reroll": { "registers": ["safer", "bolder"] },
+  "canon": true,
+  "canonCard": {
+    "kind": "canon",
+    "label": "El estándar de la categoría",
+    "thesis": "Una app de música oscura como las grandes plataformas: barra lateral, cuadrícula de portadas y barra de reproducción abajo.",
+    "palette": ["#121212", "#1f1f1f", "#ffffff", "#c9864a"],
+    "materials": ["cuadrícula limpia", "portadas"],
+    "viewport": "Barra lateral con secciones, cuadrícula de moods y reproductor fijo inferior.",
+    "risk": "Contradice tu petición de evitar la estructura convencional."
+  }
+}

@@ -40,9 +40,11 @@ export default function PreferencesPage() {
     try { await clearPreferences(); setSelected([]); setArtists([]); setLevel(3); setArtistQuery(''); setMessage('Cuestionario eliminado y nivel equilibrado restaurado. Tus ajustes y valoraciones se conservan.'); }
     catch (err) { setError(err.message); } finally { setBusy(false); }
   }
-  return <><h1>Tus preferencias musicales</h1><p>Decide cuánto quieres descubrir y qué te gustaría escuchar más. Tus ajustes se aplican a las próximas tandas, sin interrumpir la música.</p>
+  return <><h1>La consola</h1><p>Aquí se mezclan tus gustos. Decide cuánto quieres descubrir y qué te gustaría escuchar más. Tus ajustes se aplican a las próximas tandas, sin interrumpir la música.</p>
     <TasteSourceSection />
-    <form className="account-form preferences-form" onSubmit={save}>
+    <form className="account-form preferences-form console-desk" onSubmit={save}>
+      {/* Puente de vúmetros: tantos pilotos encendidos como el nivel de preferencia elegido. */}
+      <div className="meter-bridge" aria-hidden="true">{[1, 2, 3, 4, 5].map(step => <span key={step} className={step <= level ? 'is-on' : undefined} />)}</div>
       <PreferenceLevel value={level} onChange={setLevel} disabled={busy} />
       {spotifyOnly && <p className="form-note" role="note">Tus recomendaciones usan sólo tus gustos de Spotify: estos géneros y artistas quedan guardados, pero no se aplican mientras tengas elegida la fuente Spotify.</p>}
       <fieldset className="questionnaire" disabled={spotifyOnly}>

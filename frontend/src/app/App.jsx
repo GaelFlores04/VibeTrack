@@ -9,6 +9,7 @@ import ActionLink from '../shared/components/ActionLink';
 import Icon from '../shared/components/Icon';
 import { installKeyboardNavigation } from '../shared/keyboardNavigation';
 import { PageBack, TrailProvider } from './navigationTrail';
+import { WoodGrainDefs } from '../features/home/StudioObjects';
 
 const Home = lazy(pageLoaders['/']);
 const Explore = lazy(pageLoaders['/explorar']);
@@ -23,8 +24,8 @@ const Account = lazy(pageLoaders['/cuenta']);
 const APP_VERSION = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '';
 
 const PAGE_TITLES = {
-  '/': 'Inicio', '/moods': 'Moods', '/explorar': 'Explorar', '/estado': 'Estado',
-  '/login': 'Iniciar sesión', '/registro': 'Registro', '/preferencias': 'Preferencias', '/cuenta': 'Cuenta',
+  '/': 'El estudio', '/moods': 'El estante', '/explorar': 'La cabina', '/estado': 'Cuadro eléctrico',
+  '/login': 'Entrar', '/registro': 'Crear cuenta', '/preferencias': 'La consola', '/cuenta': 'El perchero',
 };
 
 export default function App() {
@@ -35,7 +36,7 @@ export default function App() {
 
   useEffect(() => {
     const mood = pathname.match(/^\/recomendaciones\/([^/]+)/)?.[1];
-    setPageTitle(`${mood ? `Mood ${decodeURIComponent(mood)}` : PAGE_TITLES[pathname] || 'Página no encontrada'} | VibeTrack`);
+    setPageTitle(`${mood ? `Sesión ${decodeURIComponent(mood)}` : PAGE_TITLES[pathname] || 'Sala no encontrada'} | VibeTrack`);
     if (focusedPath.current !== pathname) document.getElementById('content')?.focus({ preventScroll: true });
     focusedPath.current = pathname;
     if (navigation !== 'POP') window.scrollTo({ top: 0, behavior: 'instant' });
@@ -57,11 +58,12 @@ export default function App() {
   return (
     <TrailProvider>
       <a className="skip" href="#content">Saltar al contenido</a>
+      <WoodGrainDefs />
       {APP_VERSION && <p className="app-version lcd-text" aria-label={`Versión ${APP_VERSION}`}>v{APP_VERSION}</p>}
       <SiteNavigation />
       <main id="content" tabIndex={-1}>
         <PageBack />
-        <Suspense fallback={<div className="page-loading" role="status"><Icon name="disc" size={28} /><p>Preparando tu espacio…</p></div>}>
+        <Suspense fallback={<div className="page-loading" role="status"><Icon name="disc" size={28} /><p>Encendiendo las luces del estudio…</p></div>}>
           <PageTransition pageKey={pathname}>
             <Routes>
               <Route path="/" element={<Home />} />
@@ -75,9 +77,9 @@ export default function App() {
               <Route path="/cuenta" element={<RequireAuth><Account /></RequireAuth>} />
               <Route path="*" element={
                 <section className="empty-state">
-                  <h1>Página no encontrada</h1>
-                  <p>Esa dirección no existe en VibeTrack.</p>
-                  <Link className="button-link primary" to="/moods">Elegir un mood</Link>
+                  <h1>Esta sala no existe</h1>
+                  <p>Esa puerta no lleva a ninguna parte del estudio.</p>
+                  <Link className="button-link primary" to="/moods">Ir al estante</Link>
                 </section>
               } />
             </Routes>
@@ -85,8 +87,8 @@ export default function App() {
         </Suspense>
       </main>
       <footer className="site-footer">
-        <span>VibeTrack · Música para tu momento</span>
-        <ActionLink to="/estado" icon="status">Estado de los servicios</ActionLink>
+        <span>VibeTrack · estudio de escucha por mood</span>
+        <ActionLink to="/estado" icon="status">Cuadro eléctrico</ActionLink>
         <span className="footer-sources">Previews de Deezer · Datos de Last.fm · Audio de ReccoBeats</span>
         <details className="keyboard-help">
           <summary>Guía de teclado</summary>

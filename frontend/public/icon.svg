@@ -1,12 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <defs>
-    <radialGradient id="water" cx="70%" cy="22%" r="95%">
-      <stop offset="0" stop-color="#12407e"/>
-      <stop offset=".55" stop-color="#0a2550"/>
-      <stop offset="1" stop-color="#04122a"/>
-    </radialGradient>
-  </defs>
-  <rect width="512" height="512" rx="112" fill="url(#water)"/>
-  <circle cx="256" cy="256" r="150" fill="none" stroke="#8fdcff" stroke-width="34"/>
-  <circle cx="256" cy="256" r="42" fill="none" stroke="#8fdcff" stroke-width="34"/>
+  <rect width="512" height="512" rx="112" fill="#2a1a10"/>
+  <circle cx="256" cy="256" r="192" fill="#120b07" stroke="#8a5a32" stroke-width="16"/>
+  <circle cx="256" cy="256" r="144" fill="none" stroke="#8a5a32" stroke-width="12"/>
+  <circle cx="256" cy="256" r="88" fill="#f4a259"/>
+  <circle cx="256" cy="256" r="24" fill="#120b07"/>
 </svg>

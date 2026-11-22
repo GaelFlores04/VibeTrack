@@ -9,6 +9,7 @@ import GenrePicker from '../src/features/auth/GenrePicker';
 import FeedbackHistory from '../src/features/auth/FeedbackHistory';
 import PreferenceLevel from '../src/features/auth/PreferenceLevel';
 import TasteRules from '../src/features/auth/TasteRules';
+import MoodShelf from '../src/features/moods/MoodShelf';
 import { GENRE_GROUPS, GENRE_KEYS } from '../../backend/src/modules/music/genres';
 import { installKeyboardNavigation } from '../src/shared/keyboardNavigation';
 
@@ -36,6 +37,17 @@ function type(f, input, value) {
   input.dispatchEvent(new f.window.Event('input', { bubbles: true }));
 }
 const ok = data => ({ ok: true, json: async () => data });
+
+test('el estante no inicia audio ni consulta proveedores: cada caja sólo lleva a su sesión', async () => {
+  const f = await mount(<MoodShelf moods={[{ slug: 'feliz', name: 'Feliz' }, { slug: 'triste', name: 'Triste' }]} />, async () => { throw new Error('no debe consultar proveedores al mostrar el estante'); });
+  try {
+    const links = [...f.document.querySelectorAll('a.record-box')];
+    assert.deepEqual(links.map(link => link.getAttribute('href')), ['/recomendaciones/feliz', '/recomendaciones/triste']);
+    // La descripción referida existe: el lector de pantalla oye el mood y su nota.
+    assert.ok(links.every(link => f.document.getElementById(link.getAttribute('aria-describedby'))?.textContent.length > 10));
+    assert.equal(f.document.querySelector('audio'), null);
+  } finally { await f.close(); }
+});
 
 test('preferencias: busca subgéneros, conserva seleccionados y permite quitar al alcanzar doce', async () => {
   function Fixture() {

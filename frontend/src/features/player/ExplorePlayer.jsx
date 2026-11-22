@@ -47,7 +47,7 @@ export default function ExplorePlayer({ player, tracks = [], source }) {
     <section className="explore-player" aria-labelledby="explore-player-title">
       <header className="explore-player-heading">
         <div>
-          <h2 id="explore-player-title">Tu reproductor</h2>
+          <h2 id="explore-player-title">El tocadiscos de la cabina</h2>
           <p>{selected ? `${selected.title} · ${selected.artist}` : 'Elige una canción de los resultados para empezar.'}</p>
         </div>
         {loaded && player.source?.path && player.source.key !== source?.key && (
