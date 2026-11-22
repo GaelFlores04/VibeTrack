@@ -1,0 +1,268 @@
+{
+  "workspace": "C:/Vibetrack",
+  "files": [
+    {
+      "path_from_workspace": "backups/audit-build.txt",
+      "sha256": "d0ee179c-2fa1233c-3cd55e07-08104c59-93a22977-55e30883-63c2de69-1166c422",
+      "bytes": 7282
+    },
+    {
+      "path_from_workspace": "backups/audit-production.txt",
+      "sha256": "6feb27da-75669907-2b80e750-47259659-9964bb36-03a3a767-502c0494-f686d8e1",
+      "bytes": 390
+    },
+    {
+      "path_from_workspace": "backups/audit-services.txt",
+      "sha256": "8acc17dd-829bbdbe-d4b11538-0e4aa7a8-c764b297-aeada909-fd9b12fc-418f0a76",
+      "bytes": 1274
+    },
+    {
+      "path_from_workspace": "backups/audit-tests.txt",
+      "sha256": "994fea88-2a97417a-6f470e4a-227e3325-8865d565-b2597244-2f3f085f-1aff1de9",
+      "bytes": 31296
+    },
+    {
+      "path_from_workspace": "backups/controls-build.txt",
+      "sha256": "705fd189-074dcf69-5f613d84-b500b157-1dbbe323-e5294b77-13a508e7-9a72485e",
+      "bytes": 6686
+    },
+    {
+      "path_from_workspace": "backups/controls-tests.txt",
+      "sha256": "0daecd1a-4287e892-d95cd8de-10b203d0-2900b462-62e68958-cd2cb71d-b9584060",
+      "bytes": 5690
+    },
+    {
+      "path_from_workspace": "backups/controls-visual.txt",
+      "sha256": "37f0525b-be0ea600-e60c18bc-6c4fab80-8a531f79-36c59d0d-9806441e-a3d52e73",
+      "bytes": 5824
+    },
+    {
+      "path_from_workspace": "backups/DESIGN-before-studio.md",
+      "sha256": "c40d184d-0ab94824-1515532f-d8296981-ad0f3498-a3475c74-34146631-e28c3d1e",
+      "bytes": 16912
+    },
+    {
+      "path_from_workspace": "backups/DESIGN-before-zine.md",
+      "sha256": "74a1fa5f-b6c09576-f4a3aec3-9f3fd3e8-6af2c7ab-da87c4c4-2b5fb44e-538ab648",
+      "bytes": 22817
+    },
+    {
+      "path_from_workspace": "backups/estado-proyecto-2026-11-21.md",
+      "sha256": "436a3fb6-5b156ae4-77e5a0a4-b3f2cc3b-615d47c8-5e033aa1-188f99e6-69b414a3",
+      "bytes": 3964
+    },
+    {
+      "path_from_workspace": "backups/favicon-build.txt",
+      "sha256": "34992325-42ed78c0-7da859ec-38ab8180-d2d91077-8254accf-cffc8924-719684e4",
+      "bytes": 6686
+    },
+    {
+      "path_from_workspace": "backups/front-fixed-build.txt",
+      "sha256": "b3935066-d6a55777-7298a091-964ce9b9-841448e6-678c3761-c51e5919-28610fe6",
+      "bytes": 6686
+    },
+    {
+      "path_from_workspace": "backups/front-fixed-tests.txt",
+      "sha256": "563e8955-d11a56c5-fa7252fc-bc76664a-edc1c4ec-03be0454-fbe83382-e90eec85",
+      "bytes": 5712
+    },
+    {
+      "path_from_workspace": "backups/front-fixed-visual.txt",
+      "sha256": "853f60c6-05d5a54f-8961458d-f2040ee8-85e64d0e-404aa994-d70d2885-4329b1c2",
+      "bytes": 2478
+    },
+    {
+      "path_from_workspace": "backups/front-recheck-build.txt",
+      "sha256": "bd4310b4-2ddaa704-330dd111-436a1262-b0d16931-83548837-24d632cb-a1f68d69",
+      "bytes": 6686
+    },
+    {
+      "path_from_workspace": "backups/front-recheck-tests.txt",
+      "sha256": "d9210f0a-0603f134-5fea1224-ea4d62ca-96fc1a28-08f11f53-ad9f17ae-21b2c733",
+      "bytes": 8446
+    },
+    {
+      "path_from_workspace": "backups/front-recheck-visual.txt",
+      "sha256": "85e313ed-a1fd5f13-92188bb7-29e87927-527d6f84-8f503382-7b683da1-074d6fd0",
+      "bytes": 2478
+    },
+    {
+      "path_from_workspace": "backups/main-volume-tests.txt",
+      "sha256": "f91d2667-23ca8e1c-8b244293-ce57c74e-a57797e0-932f0fe4-b4bed809-5a0429bf",
+      "bytes": 5696
+    },
+    {
+      "path_from_workspace": "backups/playlist-performance-tests.txt",
+      "sha256": "504167b8-c9dde643-a72cbb8e-2d99b610-addf69fa-c298d539-8f0a602c-1657df57",
+      "bytes": 21042
+    },
+    {
+      "path_from_workspace": "backups/preference-backend-tests.txt",
+      "sha256": "9aac28a0-c9e4d5a5-b86a6318-533e9355-389b815c-85aec363-93b8f57a-84e178df",
+      "bytes": 20876
+    },
+    {
+      "path_from_workspace": "backups/preference-build.txt",
+      "sha256": "7fa1af4d-f8734c91-de014058-4ef09c4c-cc0ec463-61ecfec5-10b8e0ac-f36d459f",
+      "bytes": 6012
+    },
+    {
+      "path_from_workspace": "backups/preference-frontend-tests.txt",
+      "sha256": "ccb7288f-255a1a87-7d27b9c6-ca305c78-6cd9760d-c1ca0c10-7a9fbec3-8514959d",
+      "bytes": 5544
+    },
+    {
+      "path_from_workspace": "backups/preference-tests.txt",
+      "sha256": "d44489db-9af6f07a-4cf06a6f-fff4c982-144b9418-8f175cd6-f9727394-2153996b",
+      "bytes": 26718
+    },
+    {
+      "path_from_workspace": "backups/pre-push-build.txt",
+      "sha256": "df4893c3-e3210f4e-aebc6ebc-d398299a-4a6cb195-f6a2be68-2422fb7a-3da648f4",
+      "bytes": 7282
+    },
+    {
+      "path_from_workspace": "backups/pre-push-tests.txt",
+      "sha256": "210f3054-7277e7ad-3da31b09-0f4b4cec-01819e56-4c700a2c-608ca27a-ee2ed705",
+      "bytes": 28554
+    },
+    {
+      "path_from_workspace": "backups/redesign-direction.txt",
+      "sha256": "136d9f0b-c637627a-cf9a1b2c-9c3564ac-ae1ef3ae-64c6f582-87ca13a6-b97b7c19",
+      "bytes": 39418
+    },
+    {
+      "path_from_workspace": "backups/spotify-restore-tests.txt",
+      "sha256": "e6fff329-328269e5-049b7449-d8e20e52-80c89071-79037a1f-1ecf68b7-b8d726c6",
+      "bytes": 5916
+    },
+    {
+      "path_from_workspace": "backups/studio-build.txt",
+      "sha256": "e21cfeb6-5ff83224-1843ea22-af56e2f3-dfdcecf6-440beee6-4ed8f7b1-f6f26b3c",
+      "bytes": 6014
+    },
+    {
+      "path_from_workspace": "backups/studio-tests.txt",
+      "sha256": "71438736-8e372dcc-d092c238-a2f32901-dd0fec02-476bb925-aae28d94-cc671a46",
+      "bytes": 5708
+    },
+    {
+      "path_from_workspace": "backups/volume-build.txt",
+      "sha256": "ac4a06e4-876897bd-f059aa74-5691e442-035e94de-9361c820-bcade3aa-6008efb2",
+      "bytes": 6686
+    },
+    {
+      "path_from_workspace": "backups/volume-inline-build.txt",
+      "sha256": "1b573c49-36db2df3-1ba802f1-d3919a9d-8edf6ae6-e6c6c45e-9561cadf-f1410d15",
+      "bytes": 6686
+    },
+    {
+      "path_from_workspace": "backups/warm-build.txt",
+      "sha256": "6b06b235-7ca4259f-accac7ba-a8e268ee-19b524ab-2b018372-27d5ce47-d31a34a4",
+      "bytes": 6014
+    },
+    {
+      "path_from_workspace": "backups/warm-tests.txt",
+      "sha256": "b3635845-75b140cd-8b26bad5-76e9fb05-040885bc-4602543a-a2812ae3-bfb84511",
+      "bytes": 5720
+    },
+    {
+      "path_from_workspace": "backups/zine-build.txt",
+      "sha256": "2ac24111-db47af79-62f905d3-44693fb4-45b9a961-d7d1a4a6-2d40879c-3444fbdc",
+      "bytes": 6014
+    },
+    {
+      "path_from_workspace": "backups/zine-tests.txt",
+      "sha256": "e28719c5-66df12b2-24d89ea8-cf47790a-08ba059a-01b6d2ae-570fcdb3-19148ef5",
+      "bytes": 5544
+    },
+    {
+      "path_from_workspace": "contexto/criterios.txt",
+      "sha256": "2d67dd88-2452e6b9-45afe9ba-38de6565-d2578c48-cae50deb-f7b23d3f-642af800",
+      "bytes": 4792
+    },
+    {
+      "path_from_workspace": "contexto/Proyecto integral_ Plan (1).pdf",
+      "sha256": "9e1205da-8f881847-1654f695-cef278b3-2a0cc1d1-14d7b5c5-366b86c9-55e61b21",
+      "bytes": 596807
+    },
+    {
+      "path_from_workspace": "docs/AVANCE_FUNCIONAL.md",
+      "sha256": "0833f748-75f33c85-2b10f981-23488c88-f2743fdd-c5992a58-d307fc70-2c2e76e8",
+      "bytes": 3090
+    },
+    {
+      "path_from_workspace": "docs/Guia_VibeTrack.docx",
+      "sha256": "81d558de-481d8e4a-573e14db-ad864fec-acd9467d-f0b0215d-de072f8b-56eab1ed",
+      "bytes": 41981
+    },
+    {
+      "path_from_workspace": "docs/PLAN_PROYECTO.md",
+      "sha256": "c24f14fb-8f5047aa-79121a43-0533a107-b6d76ed0-9e805706-98e10a75-4aa75448",
+      "bytes": 26235
+    },
+    {
+      "path_from_workspace": "vibeTrackPJ/docs/APRENDIZAJE_GUSTOS.md",
+      "sha256": "ed11b156-60164ac6-1c4cfe7a-e63b36ba-f74cf7fd-0f873b01-3365003e-68760f83",
+      "bytes": 4664
+    },
+    {
+      "path_from_workspace": "vibeTrackPJ/docs/AUDITORIA_RESUELTA.md",
+      "sha256": "367a2b52-cad3faf9-185a0cd7-573aba9c-547c3133-18cfc510-b38d0d3a-e1333173",
+      "bytes": 8755
+    },
+    {
+      "path_from_workspace": "vibeTrackPJ/docs/DESPLIEGUE_RENDER.md",
+      "sha256": "4e460f97-15d676fb-8adf589f-55fa79a9-8e37da96-2f61355a-06c00faf-2e369440",
+      "bytes": 8059
+    },
+    {
+      "path_from_workspace": "vibeTrackPJ/docs/INVESTIGACION_MOODS.md",
+      "sha256": "81388ddc-85b2ee33-b68e9c81-7dc84e37-2301f525-e6d5a527-c2f8e26b-9376d5f2",
+      "bytes": 11049
+    },
+    {
+      "path_from_workspace": "vibeTrackPJ/docs/MEJORAS_NAVEGACION.md",
+      "sha256": "e6472b57-6ab195f8-f6756712-caaf4c80-4d091792-bec8dcde-2ecf9181-53a823d2",
+      "bytes": 6230
+    },
+    {
+      "path_from_workspace": "vibeTrackPJ/docs/mood-batch-sample.json",
+      "sha256": "d401b59e-86b55aaf-9bf377f1-8c596d19-4adcc9be-a91b5291-04a50542-0b85786d",
+      "bytes": 2961
+    },
+    {
+      "path_from_workspace": "vibeTrackPJ/docs/mood-provider-sample.json",
+      "sha256": "83c20e6d-3165e4dc-c770c17a-826da142-9daa942f-52094e6f-624b9109-f1f102af",
+      "bytes": 8695
+    },
+    {
+      "path_from_workspace": "vibeTrackPJ/docs/PREFERENCIAS_DETALLADAS.md",
+      "sha256": "a202f37c-f550078b-bffe7ffa-3c68617c-5ab3e9ee-36aef2ce-5a319ad7-1b7cc71a",
+      "bytes": 7749
+    },
+    {
+      "path_from_workspace": "vibeTrackPJ/frontend/.impeccable/decision-studio.json",
+      "sha256": "246f7bb3-27ad842a-1833c639-70ada21c-a62cee40-00568a65-fac759be-497ab65e",
+      "bytes": 6954
+    },
+    {
+      "path_from_workspace": "vibeTrackPJ/frontend/.impeccable/surfaces/s-recommendations-recommendationspage-jsx-d73fcaa7.md",
+      "sha256": "d8ef01cc-90273544-138daca0-cdda2460-abbc1a11-ec8e7b45-c50ad47a-fd85a2f4",
+      "bytes": 3034
+    },
+    {
+      "path_from_workspace": "vibeTrackPJ/frontend/DESIGN.md",
+      "sha256": "3e0645d7-718050d9-0b8032ce-2d28f978-5687bf1b-e256f97b-3ec06267-af4529bc",
+      "bytes": 9016
+    },
+    {
+      "path_from_workspace": "vibeTrackPJ/frontend/PRODUCT.md",
+      "sha256": "a9fd377d-d2556e4e-be6f984c-4e1e71f9-3961ab87-8a860615-bfcda74a-cb1023d6",
+      "bytes": 3906
+    }
+  ],
+  "note": "Inventario de fuentes; la fecha de modificación no demuestra fecha de decisión. Los originales fuera del repositorio no se publican.",
+  "captured_at_utc": "2026-11-22T23:00:23.1990903Z",
+  "hash_encoding": "Hashes p?blicos agrupados de 8 en 8 con guiones para distinguirlos de secretos ante el detector gen?rico del repositorio. Quitar los guiones para obtener el SHA original completo; no se ha truncado."
+}

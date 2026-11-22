@@ -1,0 +1,403 @@
+{
+  "captured_at_utc": "2026-11-22T23:00:22.6287476Z",
+  "pull_request": {
+    "created_at_utc": "2026-11-15T05:13:54Z",
+    "base": "base-funcional",
+    "merged_at": null,
+    "state": "open",
+    "changed_files": 156,
+    "title": "VibeTrack: recomendaciones, Spotify, navegación accesible y despliegue en Render",
+    "head": "mejora-algoritmo",
+    "url": "https://github.com/GaelFlores04/VibeTrack/pull/1",
+    "merge_commit_sha": null,
+    "number": 1,
+    "merged": false,
+    "commits": 16,
+    "updated_at_utc": "2026-11-22T22:53:26Z"
+  },
+  "commits": [
+    {
+      "subject": "feat: implementar base funcional de VibeTrack",
+      "parents": "",
+      "committer_date": "2026-11-13T20:02:28-08:00",
+      "author_date": "2026-11-13T20:02:28-08:00",
+      "sha": "d44a1156-7c93a9ab-f6d61008-c8c5203a-d559e88a"
+    },
+    {
+      "subject": "chore: guardar avance de auth, proveedores y motor de recomendaciones",
+      "parents": "d44a1156-7c93a9ab-f6d61008-c8c5203a-d559e88a",
+      "committer_date": "2026-11-13T22:05:48-08:00",
+      "author_date": "2026-11-13T22:05:48-08:00",
+      "sha": "c965fd28-45f9db84-992c470e-8a775967-cc6de8fe"
+    },
+    {
+      "subject": "fix: limitar accesos y sesiones y proteger respuestas de la API",
+      "parents": "c965fd28-45f9db84-992c470e-8a775967-cc6de8fe",
+      "committer_date": "2026-11-13T22:13:53-08:00",
+      "author_date": "2026-11-13T22:13:53-08:00",
+      "sha": "ccf3d2f9-7a7402b0-b7e53417-a2d9ebc3-04452cd3"
+    },
+    {
+      "subject": "docs: registrar auditoria local parcial y bloqueos verificados",
+      "parents": "ccf3d2f9-7a7402b0-b7e53417-a2d9ebc3-04452cd3",
+      "committer_date": "2026-11-13T22:13:53-08:00",
+      "author_date": "2026-11-13T22:13:53-08:00",
+      "sha": "c8bcc020-685a70f2-64af3e20-bf8c2d00-1717ac52"
+    },
+    {
+      "subject": "feat: mejorar el algoritmo de recomendaciones por mood",
+      "parents": "c8bcc020-685a70f2-64af3e20-bf8c2d00-1717ac52",
+      "committer_date": "2026-11-14T21:13:23-08:00",
+      "author_date": "2026-11-14T21:13:23-08:00",
+      "sha": "158cee20-aeaa0ea2-ebf03e7f-ccf2441f-82639b6e"
+    },
+    {
+      "subject": "feat: endurecer seguridad HTTP y sesiones con JWT renovable",
+      "parents": "158cee20-aeaa0ea2-ebf03e7f-ccf2441f-82639b6e",
+      "committer_date": "2026-11-14T21:18:41-08:00",
+      "author_date": "2026-11-14T21:18:41-08:00",
+      "sha": "cfcc60e7-bd9b23c9-233227d3-8c8599c1-3205347e"
+    },
+    {
+      "subject": "feat: integrar Spotify, letras y reproductor 3D",
+      "parents": "cfcc60e7-bd9b23c9-233227d3-8c8599c1-3205347e",
+      "committer_date": "2026-11-16T20:28:56-08:00",
+      "author_date": "2026-11-16T20:28:56-08:00",
+      "sha": "86f0bb53-dc326fc8-1142e4bb-aeb2fe9d-ba610848"
+    },
+    {
+      "subject": "docs: guardar capturas y notas del diseno actual",
+      "parents": "86f0bb53-dc326fc8-1142e4bb-aeb2fe9d-ba610848",
+      "committer_date": "2026-11-16T20:30:22-08:00",
+      "author_date": "2026-11-16T20:30:22-08:00",
+      "sha": "1f5dc22f-9856d0ee-054fa736-47812074-81f407f7"
+    },
+    {
+      "subject": "feat: mejorar diseno y navegacion completa con teclado",
+      "parents": "1f5dc22f-9856d0ee-054fa736-47812074-81f407f7",
+      "committer_date": "2026-11-16T21:36:44-08:00",
+      "author_date": "2026-11-16T21:36:44-08:00",
+      "sha": "94d192ac-dbf4b56d-61f785ff-97d86edf-bd00ff07"
+    },
+    {
+      "subject": "feat: optimizar produccion y preparar despliegue en Render Free",
+      "parents": "94d192ac-dbf4b56d-61f785ff-97d86edf-bd00ff07",
+      "committer_date": "2026-11-16T21:54:19-08:00",
+      "author_date": "2026-11-16T21:54:19-08:00",
+      "sha": "1f751ee1-eb782c58-c59059fd-5b325833-d0cd50a4"
+    },
+    {
+      "subject": "fix: restaurar discos y suavizar animaciones de reproduccion",
+      "parents": "1f751ee1-eb782c58-c59059fd-5b325833-d0cd50a4",
+      "committer_date": "2026-11-16T22:30:35-08:00",
+      "author_date": "2026-11-16T22:30:35-08:00",
+      "sha": "013af5b7-9c0b1dd0-2e434ced-f4d97aa5-ad111c84"
+    },
+    {
+      "subject": "feat: motor de moods mas rapido y equilibrado, navegacion y despliegue HTTPS",
+      "parents": "013af5b7-9c0b1dd0-2e434ced-f4d97aa5-ad111c84",
+      "committer_date": "2026-11-17T03:28:41-08:00",
+      "author_date": "2026-11-17T03:28:41-08:00",
+      "sha": "ae7c1c68-27093064-a8610c8c-6a94f9b1-c0054c0b"
+    },
+    {
+      "subject": "chore: sitio web por enlace, sin modo de app instalable",
+      "parents": "ae7c1c68-27093064-a8610c8c-6a94f9b1-c0054c0b",
+      "committer_date": "2026-11-17T03:31:09-08:00",
+      "author_date": "2026-11-17T03:31:09-08:00",
+      "sha": "f893432b-749e6c74-d8997aec-1eea1870-bf918b97"
+    },
+    {
+      "subject": "feat: renovar VibeTrack como estudio analogico",
+      "parents": "f893432b-749e6c74-d8997aec-1eea1870-bf918b97",
+      "committer_date": "2026-11-21T22:26:45-08:00",
+      "author_date": "2026-11-21T22:26:45-08:00",
+      "sha": "da76d094-be4603a0-177a599a-e9a8afbd-ca1e82ae"
+    },
+    {
+      "subject": "fix: acercar controles y priorizar Spotify al reanudar",
+      "parents": "da76d094-be4603a0-177a599a-e9a8afbd-ca1e82ae",
+      "committer_date": "2026-11-21T23:01:46-08:00",
+      "author_date": "2026-11-21T23:01:46-08:00",
+      "sha": "147dde40-06b036b6-944e03b9-e7ea93f4-2c452305"
+    },
+    {
+      "subject": "docs: actualizar README y publicar bitacora de IA y decisiones",
+      "parents": "147dde40-06b036b6-944e03b9-e7ea93f4-2c452305",
+      "committer_date": "2026-11-22T14:52:20-08:00",
+      "author_date": "2026-11-22T14:52:20-08:00",
+      "sha": "efd68d95-19565545-ebd50e09-31dabe89-2643d70e"
+    },
+    {
+      "subject": "docs: distinguir base historica y enlazar documentacion actual",
+      "parents": "d44a1156-7c93a9ab-f6d61008-c8c5203a-d559e88a",
+      "committer_date": "2026-11-22T14:52:40-08:00",
+      "author_date": "2026-11-22T14:52:40-08:00",
+      "sha": "77328d3b-95722fd0-8b1fc899-ed919150-e30ad55b"
+    },
+    {
+      "subject": "docs: normalizar finales de linea",
+      "parents": "efd68d95-19565545-ebd50e09-31dabe89-2643d70e",
+      "committer_date": "2026-11-22T14:53:23-08:00",
+      "author_date": "2026-11-22T14:53:23-08:00",
+      "sha": "4e2ece17-a7b4e574-dfd22a51-94e2070f-ba791965"
+    }
+  ],
+  "branches": [
+    {
+      "allow_deletions": false,
+      "required_status_checks": null,
+      "protected": true,
+      "name": "base-funcional",
+      "required_pull_request_reviews": null,
+      "sha": "77328d3b-95722fd0-8b1fc899-ed919150-e30ad55b",
+      "allow_force_pushes": false,
+      "enforce_admins": true
+    },
+    {
+      "allow_deletions": false,
+      "required_status_checks": null,
+      "protected": true,
+      "name": "mejora-algoritmo",
+      "required_pull_request_reviews": null,
+      "sha": "4e2ece17-a7b4e574-dfd22a51-94e2070f-ba791965",
+      "allow_force_pushes": false,
+      "enforce_admins": true
+    }
+  ],
+  "default_branch": "base-funcional",
+  "events": [
+    {
+      "action": null,
+      "number": null,
+      "type": "CreateEvent",
+      "before": null,
+      "ref": "base-funcional",
+      "created_at_utc": "2026-11-14T04:04:39Z",
+      "head": null
+    },
+    {
+      "action": null,
+      "number": null,
+      "type": "CreateEvent",
+      "before": null,
+      "ref": "mejora-algoritmo",
+      "created_at_utc": "2026-11-15T05:13:38Z",
+      "head": null
+    },
+    {
+      "action": "opened",
+      "number": 1,
+      "type": "PullRequestEvent",
+      "before": null,
+      "ref": null,
+      "created_at_utc": "2026-11-15T05:13:54Z",
+      "head": null
+    },
+    {
+      "action": null,
+      "number": null,
+      "type": "PushEvent",
+      "before": "158cee20-aeaa0ea2-ebf03e7f-ccf2441f-82639b6e",
+      "ref": "refs/heads/mejora-algoritmo",
+      "created_at_utc": "2026-11-15T05:18:44Z",
+      "head": "cfcc60e7-bd9b23c9-233227d3-8c8599c1-3205347e"
+    },
+    {
+      "action": null,
+      "number": null,
+      "type": "PushEvent",
+      "before": "cfcc60e7-bd9b23c9-233227d3-8c8599c1-3205347e",
+      "ref": "refs/heads/mejora-algoritmo",
+      "created_at_utc": "2026-11-17T04:29:03Z",
+      "head": "86f0bb53-dc326fc8-1142e4bb-aeb2fe9d-ba610848"
+    },
+    {
+      "action": null,
+      "number": null,
+      "type": "PushEvent",
+      "before": "86f0bb53-dc326fc8-1142e4bb-aeb2fe9d-ba610848",
+      "ref": "refs/heads/mejora-algoritmo",
+      "created_at_utc": "2026-11-17T04:30:34Z",
+      "head": "1f5dc22f-9856d0ee-054fa736-47812074-81f407f7"
+    },
+    {
+      "action": null,
+      "number": null,
+      "type": "PushEvent",
+      "before": "1f5dc22f-9856d0ee-054fa736-47812074-81f407f7",
+      "ref": "refs/heads/mejora-algoritmo",
+      "created_at_utc": "2026-11-17T05:36:52Z",
+      "head": "94d192ac-dbf4b56d-61f785ff-97d86edf-bd00ff07"
+    },
+    {
+      "action": null,
+      "number": null,
+      "type": "PushEvent",
+      "before": "94d192ac-dbf4b56d-61f785ff-97d86edf-bd00ff07",
+      "ref": "refs/heads/mejora-algoritmo",
+      "created_at_utc": "2026-11-17T05:54:29Z",
+      "head": "1f751ee1-eb782c58-c59059fd-5b325833-d0cd50a4"
+    },
+    {
+      "action": null,
+      "number": null,
+      "type": "PushEvent",
+      "before": "1f751ee1-eb782c58-c59059fd-5b325833-d0cd50a4",
+      "ref": "refs/heads/mejora-algoritmo",
+      "created_at_utc": "2026-11-17T06:30:45Z",
+      "head": "013af5b7-9c0b1dd0-2e434ced-f4d97aa5-ad111c84"
+    },
+    {
+      "action": null,
+      "number": null,
+      "type": "PushEvent",
+      "before": "013af5b7-9c0b1dd0-2e434ced-f4d97aa5-ad111c84",
+      "ref": "refs/heads/mejora-algoritmo",
+      "created_at_utc": "2026-11-17T11:28:45Z",
+      "head": "ae7c1c68-27093064-a8610c8c-6a94f9b1-c0054c0b"
+    },
+    {
+      "action": null,
+      "number": null,
+      "type": "PushEvent",
+      "before": "ae7c1c68-27093064-a8610c8c-6a94f9b1-c0054c0b",
+      "ref": "refs/heads/mejora-algoritmo",
+      "created_at_utc": "2026-11-17T11:31:36Z",
+      "head": "f893432b-749e6c74-d8997aec-1eea1870-bf918b97"
+    },
+    {
+      "action": null,
+      "number": null,
+      "type": "PushEvent",
+      "before": "da76d094-be4603a0-177a599a-e9a8afbd-ca1e82ae",
+      "ref": "refs/heads/mejora-algoritmo",
+      "created_at_utc": "2026-11-22T07:01:50Z",
+      "head": "147dde40-06b036b6-944e03b9-e7ea93f4-2c452305"
+    }
+  ],
+  "limitations": [
+    "Instantánea previa a esta ampliación documental.",
+    "El feed de eventos es limitado y puede retrasarse: no es un registro completo de pushes.",
+    "El estado success de un deployment no equivale a una prueba funcional actual."
+  ],
+  "repository": "GaelFlores04/VibeTrack",
+  "merge_commits": [],
+  "deployments": [
+    {
+      "id": 7975303719,
+      "statuses": [
+        {
+          "created_at_utc": "2026-11-22T07:02:54Z",
+          "environment_url": "https://vibetrack-6s5n.onrender.com",
+          "state": "success"
+        },
+        {
+          "created_at_utc": "2026-11-22T07:02:25Z",
+          "environment_url": "https://vibetrack-6s5n.onrender.com",
+          "state": "in_progress"
+        }
+      ],
+      "sha": "147dde40-06b036b6-944e03b9-e7ea93f4-2c452305",
+      "environment": "mejora-algoritmo - vibetrack",
+      "ref": "mejora-algoritmo",
+      "created_at_utc": "2026-11-22T07:02:24Z"
+    },
+    {
+      "id": 7974974962,
+      "statuses": [
+        {
+          "created_at_utc": "2026-11-22T06:29:54Z",
+          "environment_url": "https://vibetrack-6s5n.onrender.com",
+          "state": "success"
+        },
+        {
+          "created_at_utc": "2026-11-22T06:29:07Z",
+          "environment_url": "https://vibetrack-6s5n.onrender.com",
+          "state": "in_progress"
+        }
+      ],
+      "sha": "da76d094-be4603a0-177a599a-e9a8afbd-ca1e82ae",
+      "environment": "mejora-algoritmo - vibetrack",
+      "ref": "mejora-algoritmo",
+      "created_at_utc": "2026-11-22T06:29:06Z"
+    },
+    {
+      "id": 7852599580,
+      "statuses": [
+        {
+          "created_at_utc": "2026-11-17T12:02:21Z",
+          "environment_url": "https://vibetrack-6s5n.onrender.com",
+          "state": "success"
+        },
+        {
+          "created_at_utc": "2026-11-17T12:01:15Z",
+          "environment_url": "https://vibetrack-6s5n.onrender.com",
+          "state": "in_progress"
+        }
+      ],
+      "sha": "f893432b-749e6c74-d8997aec-1eea1870-bf918b97",
+      "environment": "mejora-algoritmo - vibetrack",
+      "ref": "mejora-algoritmo",
+      "created_at_utc": "2026-11-17T12:01:15Z"
+    },
+    {
+      "id": 7852392410,
+      "statuses": [
+        {
+          "created_at_utc": "2026-11-17T11:51:43Z",
+          "environment_url": "https://vibetrack-6s5n.onrender.com",
+          "state": "success"
+        },
+        {
+          "created_at_utc": "2026-11-17T11:51:17Z",
+          "environment_url": "https://vibetrack-6s5n.onrender.com",
+          "state": "in_progress"
+        }
+      ],
+      "sha": "f893432b-749e6c74-d8997aec-1eea1870-bf918b97",
+      "environment": "mejora-algoritmo - vibetrack",
+      "ref": "mejora-algoritmo",
+      "created_at_utc": "2026-11-17T11:51:16Z"
+    },
+    {
+      "id": 7852300283,
+      "statuses": [
+        {
+          "created_at_utc": "2026-11-17T11:47:27Z",
+          "environment_url": "https://vibetrack-6s5n.onrender.com",
+          "state": "failure"
+        },
+        {
+          "created_at_utc": "2026-11-17T11:46:57Z",
+          "environment_url": "https://vibetrack-6s5n.onrender.com",
+          "state": "in_progress"
+        }
+      ],
+      "sha": "f893432b-749e6c74-d8997aec-1eea1870-bf918b97",
+      "environment": "mejora-algoritmo - vibetrack",
+      "ref": "mejora-algoritmo",
+      "created_at_utc": "2026-11-17T11:46:56Z"
+    },
+    {
+      "id": 7852156663,
+      "statuses": [
+        {
+          "created_at_utc": "2026-11-17T11:40:48Z",
+          "environment_url": "https://vibetrack-6s5n.onrender.com",
+          "state": "failure"
+        },
+        {
+          "created_at_utc": "2026-11-17T11:40:02Z",
+          "environment_url": "https://vibetrack-6s5n.onrender.com",
+          "state": "in_progress"
+        }
+      ],
+      "sha": "f893432b-749e6c74-d8997aec-1eea1870-bf918b97",
+      "environment": "mejora-algoritmo - vibetrack",
+      "ref": "mejora-algoritmo",
+      "created_at_utc": "2026-11-17T11:40:02Z"
+    }
+  ],
+  "hash_encoding": "Hashes p?blicos agrupados de 8 en 8 con guiones para distinguirlos de secretos ante el detector gen?rico del repositorio. Quitar los guiones para obtener el SHA original completo; no se ha truncado."
+}
