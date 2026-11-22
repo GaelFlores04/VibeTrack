@@ -1,267 +1,99 @@
 # VibeTrack
 
-Aplicación para descubrir música según tu estado de ánimo. React + Vite, NestJS + TypeScript y MongoDB Atlas. La fase actual se centra en las funciones; el diseño retro y el 3D siguen pendientes.
+Aplicación web para descubrir música según tu estado de ánimo, con recomendaciones personalizadas y un reproductor inspirado en un estudio analógico.
 
-## Funciones disponibles
+## Ramas del proyecto
 
-- Búsqueda de canciones y artistas en Deezer (iTunes como respaldo), con portadas y previews.
-- Seis moods con perfiles distintos, varias etiquetas de Last.fm y selección editorial inicial de canciones conocidas.
-- Registro, login, consulta de cuenta y logout con revocación de sesión.
-- Cuestionario opcional de géneros y artistas; búsqueda con sugerencias y selección como etiquetas removibles, conservando preferencias existentes.
-- Recomendaciones para invitados/cuentas sin cuestionario y selección personalizada para cuentas con preferencias.
-- Cola de previews con anterior/siguiente y avance al terminar cada muestra.
+- **mejora-algoritmo:** desarrollo actual; contiene las funciones descritas en este README.
+- **base-funcional:** primera entrega del proyecto, conservada como referencia histórica.
 
-## Ejecutar
+## Funciones
 
-Requiere Node.js 22.12 o posterior. Desde PowerShell:
+- Seis moods: feliz, relajado, motivado, triste, romántico y cansado.
+- Tandas de hasta siete canciones compatibles con el mood, con motivos de recomendación y preferencias por géneros y artistas.
+- Búsqueda musical, portadas y previews de Deezer, con iTunes como respaldo.
+- Registro, inicio de sesión, preferencias y valoraciones para personalizar las recomendaciones.
+- Minirreproductor persistente, cola, volumen, navegación entre tandas y controles de teclado.
+- Integración opcional con Spotify para importar señales de gusto y reproducir canciones completas cuando la cuenta y los permisos lo permiten.
+- Escena 3D, controles HTML accesibles y soporte de movimiento reducido.
+
+El motor combina etiquetas de Last.fm, rasgos de audio de ReccoBeats y señales de letras de LRCLIB. Sus puntuaciones son heurísticas. Si no encuentra siete coincidencias, informa la disponibilidad sin rellenar la tanda con canciones de compatibilidad dudosa.
+
+## Tecnologías
+
+| Capa | Tecnologías |
+| --- | --- |
+| Interfaz | React 19, Vite, React Router y CSS |
+| Escena 3D | Three.js y React Three Fiber |
+| API | NestJS y TypeScript |
+| Persistencia | MongoDB / MongoDB Atlas |
+| Organización | Workspaces npm para frontend y backend |
+| Despliegue | Docker y configuración para Render |
+
+## Ejecutar localmente
+
+Requiere Node.js **22.12 o posterior** y npm. Desde la raíz del repositorio, en PowerShell:
 
 ```powershell
-cd C:\Vibetrack\vibeTrackPJ
-npm install
+git switch mejora-algoritmo
+npm ci
 if (!(Test-Path backend/.env)) { Copy-Item backend/.env.example backend/.env }
 ```
 
-Completar `backend/.env` con `MONGODB_URI`, `LASTFM_API_KEY` y `JWT_SECRET`. El secreto JWT debe tener al menos 32 caracteres aleatorios. Para generar uno sin exponer las otras credenciales:
+Configura las variables del backend antes de arrancar:
 
-```powershell
-node -e "console.log(require('node:crypto').randomBytes(48).toString('hex'))"
-```
+| Variable | Uso |
+| --- | --- |
+| MONGODB_URI | Persistencia de cuentas, sesiones y preferencias |
+| LASTFM_API_KEY | Fuentes de recomendaciones y metadatos |
+| JWT_SECRET | Secreto de al menos 32 caracteres aleatorios |
+| PORT | Puerto de la API; 3000 por defecto |
+| FRONTEND_ORIGIN | Origen autorizado del frontend |
+| SPOTIFY_CLIENT_ID | Integración opcional con Spotify |
+| SPOTIFY_CLIENT_SECRET | Secreto de la app de Spotify |
+| SPOTIFY_REDIRECT_URI | Callback registrado en Spotify |
 
-La instalación local ya tiene un secreto generado. Conservarlo para mantener las sesiones entre reinicios. No subir `.env` a Git.
+Consulta `backend/.env.example` para las demás opciones. No subas credenciales ni archivos `.env` a Git.
 
 ```powershell
 npm run dev
 ```
 
-Abrir http://127.0.0.1:5173. Vite envía `/api` al backend mediante proxy. Usar siempre el mismo host (`localhost` o `127.0.0.1`) para conservar la cookie del navegador.
+Abre http://127.0.0.1:5173. Vite envía las solicitudes de `/api` al backend. Usa siempre el mismo host para conservar la sesión del navegador.
 
-## Entorno
-
-| Variable | Uso |
-| --- | --- |
-| PORT | Puerto API, 3000 por defecto |
-| FRONTEND_ORIGIN | Origen de frontend autorizado; localhost:5173 por defecto |
-| MONGODB_URI | Conexión a MongoDB; requerida para cuentas y sesiones |
-| LASTFM_API_KEY | Consultas de recomendaciones y metadatos |
-| JWT_SECRET | Clave aleatoria de al menos 32 caracteres |
-| NODE_ENV | `production` activa cookies Secure y restringe el origen configurado |
-
-Producción necesita HTTPS y un proxy que mantenga frontend y API en el mismo sitio. La configuración local usa cookie HttpOnly, SameSite=Strict y ruta `/api`; no guarda tokens en localStorage. Las mutaciones exigen `X-VibeTrack: 1` y verifican Origin cuando está presente. CORS permite únicamente el origen configurado, más los hosts locales durante desarrollo.
-
-## Cuentas y persistencia
-
-Colecciones `users` y `sessions`, relacionadas mediante `sessions.userId`. Email único normalizado, contraseñas con scrypt asíncrono versionado y salt aleatorio por usuario (N=32768, r=8, p=1). Se ejecutan hasta dos derivaciones a la vez y se admiten ocho en espera; al saturarse se responde 429. Los hashes anteriores se verifican con N=65536 y se migran tras un login correcto. JWT HS256 con emisor, audiencia, expiración de siete días y firma verificados usando crypto de Node. El token se guarda en cookie; MongoDB almacena su hash para permitir revocación. Un índice TTL limpia sesiones vencidas; también se verifica su fecha en cada consulta.
-
-Las preferencias se guardan en el usuario autenticado. Los DTOs rechazan campos adicionales y no aceptan un ID ajeno para modificar preferencias. Las consultas públicas funcionan sin cuenta. Sin MongoDB las operaciones de cuenta devuelven un error de servicio.
-
-## Diseño: retro 2000s, música y océano
-
-Implementa los criterios D01–D12 de `docs/PLAN_PROYECTO.md`.
-
-- **Escena 3D del reproductor** (`frontend/src/features/player/scene/`): React Three Fiber + three.js, cargada de forma diferida sólo en la página del reproductor (~250 KB gzip). Reproductor ovalado plateado con tapa azul translúcida que se abre al cambiar de CD, pila con la portada real de cada canción y giro sólo mientras el audio suena. Los modelos son procedurales hasta tener los GLB exportados de Spline.
-- **CD-R a rotulador:** una canción sin preview (o cuya portada no carga) aparece como CD-R virgen con su título escrito en Permanent Marker, en la escena y en las miniaturas.
-- **Equivalente accesible (D09):** lista HTML "Sigue en la tanda", barra de controles y pantalla LCD con texto real; nada depende de tocar el 3D.
-- **Rendimiento y respaldo (D10):** espacio reservado, dibujo bajo demanda, resolución reducida si las transiciones bajan de 24 FPS y vista estática si WebGL falla o va lento. Medido: 60 FPS en Intel Iris Xe.
-- **Movimiento reducido (D11):** sin giro y con cambios de disco inmediatos.
-- Fuentes alojadas en el proyecto (`@fontsource`): Saira itálica (marca y títulos), Atkinson Hyperlegible Next (texto), Share Tech Mono (LCD) y Permanent Marker (CD-R).
-- Valoraciones por mood disponibles mediante la API de feedback y el historial de preferencias.
-
-## Navegación y reproductor
-
-- **Minirreproductor** fijo abajo en todas las páginas: portada, anterior / pausa / siguiente, barra de progreso, cola con volumen y "Volver a la tanda" cuando navegas a otra página.
-- **Tandas en la URL** (`?tanda=2`) con sesión por pestaña: F5 y "Atrás" vuelven a la misma tanda; "Tanda anterior" / "Siguiente tanda" recuperan al instante las ya preparadas.
-- Al cambiar de tanda la página sube a la primera canción y le da el foco; si la reproducción avanza sola, la lista acompaña a la canción en curso.
-- Al terminar la cola, el reproductor ofrece seguir con otra tanda y continúa solo.
-- Teclas multimedia y pantalla de bloqueo (Media Session), atajos (Espacio pausa o continúa, Mayús + ← / → cambia de canción) y la canción en el título de la pestaña.
-- Tras recargar, la cola se restaura en pausa en el mismo punto; el volumen se recuerda.
-
-## Recomendaciones y rendimiento
-
-Cada tanda completa contiene **7 recomendaciones**; el audio no bloquea su presentación. Se mantiene una reserva de candidatas por sesión de descubrimiento; se consultan más fuentes hasta reunir siete coincidencias de mood y preferencias. Las tandas preparadas se reutilizan y las peticiones simultáneas de la misma página se agrupan.
-
-### Proveedores
-
-| Proveedor | Uso | Clave |
-| --- | --- | --- |
-| **Last.fm** | Candidatas (tags del mood, géneros, top de artistas), artistas similares, género del artista, etiquetas de respaldo y autocompletado | `LASTFM_API_KEY` |
-| **Deezer** | Búsqueda, previews de 30 s, portada e ISRC de cada candidata | No (endpoints públicos) |
-| **ReccoBeats** | Rasgos de audio por ISRC (valence, energy, danceability, acousticness) para clasificar el mood | No; `RECCOBEATS_ENABLED=false` lo desactiva |
-| **iTunes Search** | Respaldo de búsqueda y previews si Deezer falla o no encuentra la canción | No |
-
-Las URLs de preview de Deezer van firmadas y caducan en ~15 minutos, así que las tarjetas apuntan a `/api/music/preview/:id`, que redirige a una URL recién emitida (caché de 5 minutos, sólo en memoria y sólo hacia `*.dzcdn.net`).
-
-### Cómo se decide el mood
-
-El motor separa **compatibilidad emocional**, **preferencias** y **diversidad**. La investigación, el análisis del historial y los resultados reproducibles están en [INVESTIGACION_MOODS.md](docs/INVESTIGACION_MOODS.md).
-
-- `mood-classifier.ts` reúne los perfiles y devuelve evidencia y motivos de decisión. Sus puntuaciones son heurísticas, no probabilidades entrenadas.
-- Feliz, triste y romántico requieren contexto propio de la canción además de audio compatible, cuando existe. Valencia alta no prueba alegría; valencia baja no distingue tristeza de tensión. Géneros y fuentes de búsqueda no certifican emociones.
-- Relajado, cansado y motivado pueden clasificarse con audio si el ajuste es fuerte. El tempo es una señal suave, con una aproximación al pulso percibido.
-- LRCLIB se empareja por título y artista. El léxico español/inglés evalúa ocho temas, contradicciones y algunas negaciones. Se guarda sólo el perfil numérico; no entiende todo sarcasmo, metáfora o contexto cultural. `LYRICS_ENABLED=false` desactiva esta señal.
-- Ni favoritos ni curación eluden contradicciones. Un error temporal de letras deja la canción pendiente de reintento; ausencia confirmada permite recurrir a etiquetas emocionales directas. ReccoBeats sigue siendo opcional.
-- Se deduplica también por ID resuelto e ISRC. La coincidencia Deezer obtenida para clasificar se reutiliza para el preview.
-
-### Personalización
-
-- **Invitados/sin cuestionario:** selección editorial conocida y listas del mood, ponderando afinidad y popularidad.
-- **Nivel 3, Equilibrado (predeterminado).** Cada tanda de 7 se arma por cupos: **4 de tus artistas**, **2 cercanas** (artistas similares, tus géneros o el estilo de tus artistas) y **1 descubrimiento** fuera de tus gustos que encajen claramente con el mood (afinidad ≥ 0.8), con preferencia por géneros vecinos (rock → indie/folk/metal, hip-hop → R&B/electrónica…). Sin artistas elegidos: 5 de tus géneros y 2 descubrimientos. Si un grupo no alcanza, completan primero tus artistas y los cercanos; los descubrimientos llegan a 3 como máximo salvo que no haya nada más. Cada canción indica su motivo ("De uno de tus artistas", "Artista similar a…", "Para descubrir: folk, cerca de lo que escuchas").
-- La búsqueda reparte esfuerzo entre tus artistas, cercanos y fuentes del mood. Si un catálogo aporta pocas coincidencias tras revisarlo, reduce su turno para buscar más alternativas, sin relajar la compatibilidad.
-- **Descubrimientos con criterio.** Salen de dos fuentes: las listas del mood y **artistas a dos pasos** de los tuyos (similares de tus similares; p. ej. The Strokes → Little Joy o CRX). Se puntúan por afinidad con tu gusto (35 %), encaje con el mood (30 %) y **popularidad intermedia** (25 %): se prefieren temas entre ~30 mil y ~800 mil oyentes en Last.fm, y un mega-éxito (más de ~2 M) apenas suma. Los temas de tus géneros también ponderan esa novedad a medias; los de tus artistas favoritos, no.
-- **Sorpresa ocasional.** En ~1 de cada 3 tandas uno de los descubrimientos es deliberadamente distinto a tu gusto, pero encaja de sobra con el mood (afinidad ≥ 0.85) y no es un mega-éxito.
-- **Perfil de gusto (`taste_profiles`).** Por cuenta, en MongoDB (memoria si no hay base), con TTL de 180 días. Combina las etiquetas de tus artistas, tus géneros y lo que aprende de las previews que escuchas (`POST /api/music/plays`): peso por artista, peso por etiqueta y el promedio de sonido (valence, energy, danceability, acousticness, tempo). Las señales antiguas pierden peso poco a poco. **Sólo guarda agregados**, nunca qué escuchaste ni cuándo.
-- El historial de canciones mostradas se guarda por cuenta y mood durante 7 días (`recommendation_history`, con TTL). Cambiar de gustos no reinicia el historial; si ya se mostró todo lo compatible, el ciclo vuelve a empezar.
-
-Si no se encuentran siete coincidencias, la respuesta indica `retry` o `exhausted`. La interfaz conserva la tanda completa anterior si existe; en la primera carga muestra las coincidencias disponibles y un mensaje específico. No se rellena con canciones de compatibilidad dudosa ni se sustituye una tanda de siete por otra de dos. Algunas combinaciones (p. ej. un pianista clásico con el mood motivado) no tienen siete canciones reales.
-
-### Caché y límites
-
-La caché compartida almacena exclusivamente metadatos públicos, en memoria y en la colección `music_cache` de MongoDB con índice TTL. Rasgos de audio: tres días; coincidencias de Deezer: un día; catálogos y etiquetas: seis horas; fuentes: una hora; búsquedas: diez minutos. No se almacenan archivos de audio.
-
-Deezer se limita a 40 consultas cada 5 s por proceso (su cuota pública es 50); ReccoBeats agrupa hasta 40 ISRC por llamada; iTunes conserva dieciocho consultas por minuto. Last.fm informa `totalPages` muy por debajo de lo real en los tags, por eso los tags se paginan hasta recibir una página corta (máximo 30); el top de un artista se recorre hasta 4 páginas.
-
-### APIs evaluadas
-
-- **Spotify:** desde 2024 las apps nuevas no tienen acceso a *audio-features*, *recommendations* ni previews; no sirve para este caso.
-- **Deezer:** restringió la creación de nuevas apps OAuth, pero los endpoints públicos de búsqueda y pistas que se usan aquí no requieren app ni clave.
-- **ReccoBeats:** servicio gratuito y pequeño; por eso es opcional y su caída sólo devuelve la clasificación a las etiquetas.
-
-## API
-
-| Método | Ruta | Uso |
-| --- | --- | --- |
-| GET | /api/health | Estado de proceso y conexión/configuración |
-| GET | /api/moods | Seis moods con descripción |
-| GET | /api/music/search?q=Daft%20Punk | Búsqueda pública |
-| GET | /api/music/preview/3106505 | Redirige a la URL vigente del preview de Deezer |
-| POST | /api/music/plays | `{ id: "deezer:3106505" }`; requiere sesión. Afina el perfil de gusto (sólo agregados) |
-| GET | /api/music/genres | Catálogo de 16 familias y 64 subgéneros |
-| GET | /api/music/feedback/feliz | Votos vigentes por canción; requiere sesión |
-| POST | /api/music/feedback | `{ trackId, mood, rating: "like" / "dislike" / null }`; requiere sesión y una canción de una tanda propia |
-| GET | /api/music/feedback/feliz/history | Historial de valoraciones del mood, incluso tras reiniciar el servidor; requiere sesión |
-| DELETE | /api/music/feedback/feliz/:key | Quita una valoración propia guardada; requiere sesión |
-| GET | /api/music/recommendations/feliz?session=UUID&page=1 | Tanda de 7; objeto con tracks, status, page, nextPage, mode y previewsPending |
-| GET | /api/music/artists?q=d | Sugerencias de artistas desde una letra |
-| GET | /api/music/suggestions?q=d | Sugerencias de canciones y artistas desde una letra |
-| POST | /api/auth/register | `{ name, email, password }`; crea cuenta y sesión |
-| POST | /api/auth/login | `{ email, password }`; inicia sesión |
-| GET | /api/auth/me | Cuenta actual; sin sesión válida, respuesta vacía |
-| POST | /api/auth/logout | Revoca sesión y elimina cookie |
-| POST | /api/auth/logout-all | Requiere sesión; revoca todas las sesiones de la cuenta |
-| PUT | /api/auth/preferences | `{ genres: [], artists: [], preferenceLevel: 3 }`; requiere sesión |
-| DELETE | /api/auth/preferences | Borra el cuestionario; conserva likes y dislikes |
-
-Hasta doce géneros/subgéneros y cinco artistas. Contraseña: diez a 128 caracteres. Registro y login limitados a cinco peticiones por minuto e IP, además del límite general de API.
-
-Las valoraciones afinan las próximas tandas por mood sin modificar la selección ni el audio actuales. Un dislike evita esa canción, sin vetar a su artista ni al género; los likes concretos prevalecen sobre las generalizaciones. En Preferencias puedes buscar y quitar valoraciones anteriores. Consulta [las reglas de aprendizaje y persistencia](docs/APRENDIZAJE_GUSTOS.md).
-
-## Validación
+## Comprobaciones
 
 ```powershell
+npm run check:secrets
 npm run build
 npm test
+npm run check:production
 npm run check:services
 ```
 
-Las pruebas automatizadas cubren contraseñas, JWT, rutas de cuenta, validación, CSRF, aislamiento de preferencias, revocación, selección por mood, popularidad, personalización, cachés y previews. Las rutas se prueban dentro del proceso con repositorio aislado y los proveedores con respuestas simuladas. No se modifican cuentas reales ni datos de Atlas durante las pruebas.
+El build incluye presupuestos de descarga. La comprobación de producción necesita la aplicación compilada; la de servicios requiere el entorno y los proveedores configurados. Estos comandos son instrucciones de validación, no una afirmación de que se hayan ejecutado en esta actualización documental.
 
-Revisión de navegador a cargo del usuario, con servicios reales:
+## Sesiones y datos
 
-1. Elegir un mood como invitado y escuchar la secuencia de previews.
-2. Crear cuenta y omitir el cuestionario: debe conservar el modo de canciones conocidas.
-3. Guardar géneros/artistas; volver al mismo mood y comprobar la selección y sus motivos.
-4. Recargar para comprobar la sesión y las preferencias persistidas en MongoDB.
-5. Cerrar sesión y entrar con otra cuenta: sus preferencias deben ser independientes.
-6. Eliminar preferencias y comprobar la vuelta al modo inicial.
-7. Pedir al menos tres tandas consecutivas: deben mantenerse siete canciones y no repetirse dentro de esa selección.
-8. Escribir desde una letra en Explorar y en artistas; seleccionar con ratón o flechas/Enter, quitar etiquetas y guardar.
-9. Escuchar los seis moods y registrar ejemplos que no encajen. Revisar que la página conserve la tanda durante carga o error.
+La autenticación usa cookies HttpOnly y sesiones revocables. Los JWT tienen una duración de 60 minutos y pueden renovarse dentro del límite de siete días de la sesión. Las mutaciones validan el origen y la cabecera `X-VibeTrack`.
 
-## Siguiente fase
+Las preferencias pertenecen a la cuenta autenticada. El perfil aprendido conserva agregados de gusto; el historial de recomendaciones tiene su propia persistencia temporal. La caché musical almacena metadatos, no archivos de audio.
 
-Favoritos, calificaciones, historial, estadísticas, CRUD restante, permisos por rol, diseño retro y despliegue.
+## Diseño y despliegue
 
-Repositorio: https://github.com/GaelFlores04/VibeTrack.git
+La referencia visual actual es un estudio analógico nocturno con maderas, tonos ámbar y tocadiscos: [guía de diseño](frontend/DESIGN.md).
 
-## Publicación web en Render Free
+La aplicación se distribuye como sitio web accesible por enlace. La configuración de Render sirve frontend y API bajo un mismo origen HTTPS. Consulta la [guía de despliegue](docs/DESPLIEGUE_RENDER.md) para configurar el entorno y comprobar la publicación.
 
-El proyecto incluye `Dockerfile` y `render.yaml` para servir frontend y API bajo una sola URL HTTPS, accesible desde el navegador sin instalar una app. Consulta [la guía de despliegue](docs/DESPLIEGUE_RENDER.md) para conectar Render, configurar Atlas y publicar desde `mejora-algoritmo`.
+## Documentación y trazabilidad
 
-`npm run build` verifica los presupuestos de descarga; `npm run check:production` prueba el servidor compilado en un proceso local aislado. `npm start` inicia la aplicación compilada con la configuración del entorno.
+- [Bitácora de IA](docs/BITACORA_IA.md): intervenciones, comprobaciones y pendientes por sesión.
+- [Diario de decisiones](docs/DIARIO_DECISIONES.md): decisiones, contexto, consecuencias y evidencia.
+- [Investigación de moods](docs/INVESTIGACION_MOODS.md).
+- [Aprendizaje de gustos](docs/APRENDIZAJE_GUSTOS.md).
+- [Preferencias detalladas](docs/PREFERENCIAS_DETALLADAS.md).
+- [Mejoras de navegación](docs/MEJORAS_NAVEGACION.md).
+- [Auditoría y pendientes históricos](docs/AUDITORIA_RESUELTA.md).
 
-## Si una credencial se expuso
+Los registros históricos pueden describir fases anteriores. No equivalen a una certificación del estado actual ni de los servicios externos.
 
-El dueño debe rotar la contraseña del usuario de Atlas, regenerar la clave de Last.fm
- y generar un nuevo JWT_SECRET. Actualizar su entorno manualmente; nunca guardar valores reales en Git.
-
-```sh
-node -e "console.log(require('node:crypto').randomBytes(48).toString('hex'))"
-```
-
-Ejecutar `npm run check:secrets` antes de cada commit. El detector no abre archivos `.env`;
-no reemplaza la rotación de credenciales ni una revisión del historial de Git.
-
-## Auditoría local en curso
-
-La auditoría completa está **inconclusa**. Consultar `docs/AUDITORIA_RESUELTA.md` para el estado de cada fase.
-No se han publicado cambios ni efectuado push. El fallo real de recomendaciones con preferencias sigue abierto.
-
-- Máximo cinco sesiones conservadas por cuenta; `logout-all` cierra todas.
-- Login: después de cinco fallos por correo normalizado se bloquea temporalmente esa clave
-  durante 30 segundos; los bloqueos posteriores aumentan hasta 15 minutos. Estado acotado por proceso.
-- La política de contraseñas rechaza ejemplos triviales y el correo completo dentro de la contraseña.
-- El registro no admite roles; el esquema admite `user` y `admin`. RolesGuard distingue 401/403.
-  La interfaz y los endpoints administrativos de moods siguen pendientes de la fase F.
-- API: cuerpo JSON máximo 10 kb; JSON inválido con mensaje genérico; errores con `requestId`.
-  Las respuestas musicales se construyen con una lista de campos públicos; no exponen el estado del ranking.
-- Producción: `autoIndex=false`. Después de compilar, el dueño puede ejecutar
-  `node backend/scripts/sync-indexes.cjs` con MONGODB_URI configurada en su entorno.
-  Crea índices sin borrar índices ajenos. No se ha ejecutado contra Atlas.
-- Para promover una cuenta existente: `node backend/scripts/make-admin.cjs correo@example.com`.
-  Requiere MONGODB_URI en el entorno; no abre `.env` ni imprime credenciales. No se ha ejecutado.
-- JWT sigue siendo la implementación previa de siete días; la migración a @nestjs/jwt y renovación
-  corta está pendiente por bloqueo de instalación. No se considera resuelta la auditoría de autenticación.
-
-### Retomar la instalación bloqueada
-
-En una terminal local con acceso a npm, desde la raíz del proyecto:
-
-```powershell
-npm ci
-npm install -w backend helmet compression @nestjs/jwt
-npm install -D -w backend @types/compression
-npm run build
-npm test
-```
-
-Estos comandos instalan dependencias; todavía falta conectar helmet, compresión, JWT y Swagger en el código.
-El fallo observado aquí fue ENOTFOUND para registry.npmjs.org. La instalación npm ci también encontró
-EPERM al crear enlaces de workspaces. Las dependencias anteriores se restauraron desde caché en una
-instalación auxiliar sin enlaces y se verificaron build y tests; eso no equivale a un npm ci normal exitoso.
-
-### Seguridad integrada después de instalar dependencias
-
-Helmet aplica CSP de API `default-src 'none'; frame-ancestors 'none'`, nosniff y HSTS solo en producción.
-Compression negocia compresión de JSON; el parser limita el cuerpo a 10 kb.
-JWT ahora usa @nestjs/jwt con HS256, issuer/audience fijos y duración de 60 minutos.
-`POST /api/auth/refresh` requiere X-VibeTrack y la cookie: comprueba firma, hash revocable y la fecha
-máxima de sesión en MongoDB. En los últimos 15 minutos rota el token de forma atómica, sin extender
-los siete días originales. El frontend renueva al entrar y cada diez minutos mientras hay sesión.
-Las cookies anteriores firmadas con duración de siete días requieren iniciar sesión de nuevo tras esta migración;
-un refresh con una cookie inválida, revocada o caducada la elimina del navegador.
-`@nestjs/swagger` se retiró: no se usaba y arrastraba `swagger-ui-dist` y la telemetría `@scarf/scarf`.
-
-## Preferencias detalladas
-
-Cinco niveles de exploración, desde «Sorpréndeme» hasta un modo estricto que sólo permite tus preferencias. Las valoraciones de compatibilidad con el mood están separadas de los gustos por canción/artista; puedes favorecer, reducir o excluir canciones, artistas y géneros desde Preferencias. Reglas, límites y pasos de prueba: [PREFERENCIAS_DETALLADAS.md](docs/PREFERENCIAS_DETALLADAS.md).
-
-## Spotify (opcional, Premium)
-
-Las cuentas pueden conectar Spotify desde **Tu cuenta**. Con eso:
-
-- **Canciones completas:** con Premium, el navegador se convierte en un dispositivo "VibeTrack" (Web Playback SDK) y cada canción se busca en Spotify por ISRC (la misma grabación) o, si falla, por título y artista. Lo que no está en Spotify suena con el preview de 30 s.
-- **Perfil más detallado:** importa muestras de artistas y canciones principales de tres plazos, artistas seguidos, canciones guardadas y escuchas recientes. Muestra cantidades, límites y permisos pendientes por fuente. Las cuentas vinculadas previamente deben actualizar permisos desde Cuenta → Vinculaciones.
-- **Privacidad:** el token de renovación se guarda cifrado (AES-256-GCM) y nunca llega al navegador; sólo se guardan nombres de artistas y pesos agregados. Desconectar borra ambos.
-
-Configuración: crea una app en el [panel de Spotify](https://developer.spotify.com/dashboard), registra el Redirect URI `http://127.0.0.1:5173/api/spotify/callback` y rellena `SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET` y `SPOTIFY_REDIRECT_URI` en `backend/.env`.
-
-Límites de Spotify (2026) para apps en modo desarrollo: el dueño de la app necesita Premium, hay un máximo de 5 usuarios que deben añadirse a mano en *User Management*, y la búsqueda devuelve como mucho 10 resultados. Para abrirlo a cualquiera hace falta solicitar *Extended Quota* a Spotify.
